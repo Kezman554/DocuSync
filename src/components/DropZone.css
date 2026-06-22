@@ -1,0 +1,28 @@
+.dropzone {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.dropzone__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(58, 130, 246, 0.12);
+  border: 3px dashed #3a82f6;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.dropzone__hint {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  background: #3a82f6;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+}

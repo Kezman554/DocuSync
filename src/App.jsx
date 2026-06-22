@@ -3,6 +3,7 @@ import { DocumentProvider } from './hooks/DocumentContext.jsx';
 import Toolbar from './components/Toolbar.jsx';
 import ThumbnailSidebar from './components/ThumbnailSidebar.jsx';
 import Viewer from './components/Viewer.jsx';
+import DropZone from './components/DropZone.jsx';
 import './App.css';
 
 function App() {
@@ -14,18 +15,20 @@ function App() {
     <DocumentProvider>
       <div className="app">
         <Toolbar onToggleSidebar={() => setSidebarOpen((open) => !open)} />
-        <div className="app__body">
-          <ThumbnailSidebar open={sidebarOpen} />
-          {sidebarOpen && (
-            <button
-              type="button"
-              className="app__scrim"
-              aria-label="Close thumbnails"
-              onClick={() => setSidebarOpen(false)}
-            />
-          )}
-          <Viewer />
-        </div>
+        <DropZone>
+          <div className="app__body">
+            <ThumbnailSidebar open={sidebarOpen} />
+            {sidebarOpen && (
+              <button
+                type="button"
+                className="app__scrim"
+                aria-label="Close thumbnails"
+                onClick={() => setSidebarOpen(false)}
+              />
+            )}
+            <Viewer />
+          </div>
+        </DropZone>
       </div>
     </DocumentProvider>
   );

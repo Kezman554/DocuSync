@@ -1,31 +1,48 @@
 .viewer {
+  position: relative;
   flex: 1;
   min-width: 0;
-  overflow: auto;
   background: #1b1c1f;
+  display: flex;
+  flex-direction: column;
+}
+
+.viewer--empty {
+  align-items: center;
+  justify-content: center;
+}
+
+/* Scrollable area that holds the rendered page canvas. */
+.viewer__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   display: flex;
   justify-content: center;
   align-items: flex-start;
   padding: 1.5rem;
 }
 
-.viewer--empty {
-  align-items: center;
-}
-
-.viewer__page {
-  width: min(800px, 100%);
-  aspect-ratio: 3 / 4;
+.viewer__canvas {
   background: #fff;
-  border-radius: 4px;
+  border-radius: 2px;
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  /* Center small pages but allow large ones to scroll. */
+  margin: auto;
 }
 
-.viewer__placeholder {
-  color: #6b7077;
+.viewer__status {
+  color: #9aa0a6;
   font-size: 0.95rem;
   text-align: center;
+}
+
+.viewer__status--error {
+  color: #f0857d;
+}
+
+.viewer__error-detail {
+  color: #9aa0a6;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
 }

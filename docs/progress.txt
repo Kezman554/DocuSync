@@ -27,3 +27,21 @@ DocuSync — Progress Log
   off-canvas drawer toggled from the toolbar, with a scrim to dismiss.
 - Tests: expanded App.test.jsx to 3 (brand, empty state, layout regions);
   all green. Verified `npm run dev` compiles and boots on :5173.
+
+2026-06-22 — PDF loading and viewing
+- src/lib/pdfLoader.js: lazy-imports pdfjs-dist (+ worker via ?url) and loads
+  a File into a PDFDocumentProxy. Lazy import keeps pdf.js out of the test graph.
+- src/lib/zoom.js: pure page/zoom helpers (clamp, zoomIn/out 0.25 step with
+  min 0.25 / max 4, clampPage, formatZoom) — unit-tested in tests/zoom.test.js.
+- DocumentContext now loads PDFs (loading/ready/error status, stale-load guard),
+  stores pdfDoc + numPages + currentPage + scale, and exposes next/prev/goToPage
+  and zoomIn/out/resetZoom.
+- Viewer renders the current page to a <canvas> (devicePixelRatio-aware,
+  cancels in-flight renders on page/scale change) and shows loading/error states.
+- PageControls: prev/next with 'Page X of Y' + zoom out/in with % label,
+  buttons disabled at bounds.
+- DropZone: drag-and-drop a PDF anywhere over the body (dragenter/leave depth
+  counter, overlay hint, PDF-type filter).
+- Tests: 11 passing (3 App + 8 zoom). Production build splits pdf.js core and
+  worker into lazy chunks. End-to-end smoke (pdf-lib -> pdf.js) confirmed
+  numPages and correct viewport scaling.

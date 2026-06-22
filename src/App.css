@@ -9,6 +9,7 @@
   display: flex;
   flex: 1;
   min-height: 0;
+  width: 100%;
 }
 
 /* Scrim behind the mobile sidebar drawer. Hidden on desktop. */
