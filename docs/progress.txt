@@ -1,0 +1,17 @@
+DocuSync — Progress Log
+
+2026-06-22 — Project scaffolding
+- Scaffolded Vite + React (manual setup; dir already held CLAUDE.md/docs).
+- Created folders: src/components/, src/lib/, src/hooks/, tests/, docs/.
+- Installed runtime deps: pdf-lib, pdfjs-dist, signature_pad.
+- Configured Vitest + React Testing Library (jsdom, tests/setup.js).
+  Added one passing sample test (tests/App.test.jsx) asserting the title renders.
+- Added .gitignore (node_modules/, dist/, .env).
+- Built App.jsx shell: DocuSync title + empty two-pane editor placeholder
+  (thumbnail sidebar + viewer canvas).
+- git init + remote origin -> https://github.com/Kezman554/DocuSync.git
+  (committed locally; not pushed).
+- Verified: `npm test` green (1 passed); `npm run dev` boots on :5173.
+- Upgraded Vitest to v4.1.9 to clear 5 dev-tooling npm audit advisories
+  (esbuild/vite/vitest chain; dev-only, not shipped in build).
+  Result: npm audit clean (0 vulnerabilities); npm test still green (1 passed).
