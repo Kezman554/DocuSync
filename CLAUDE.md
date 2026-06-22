@@ -1,0 +1,47 @@
+Project: DocuSync
+
+A fully client-side, browser-based PDF editor for viewing, organising, annotating, and stamping PDFs — no uploads, no backend.
+Built with Vite + React, pdf-lib, pdf.js, and signature_pad.
+
+Structure
+
+
+src/components/ - React UI components
+src/lib/ - PDF logic, coordinate mapping, image processing
+src/hooks/ - shared React hooks and state
+tests/ - Vitest unit and component tests
+docs/ - PRD and progress log
+
+
+Commands
+
+
+npm run dev - Run the app (Vite dev server)
+npm test - Run tests (Vitest)
+npm run build - Build static output
+npm run preview - Preview the production build
+
+
+Git
+
+
+Do not push to GitHub without explicit permission
+Commit after completing each session
+Update docs/progress.txt briefly if significant work was done
+
+
+Conventions
+
+
+Client-side only: no network calls, uploads, or backend
+Non-destructive edits held in memory; baked into the PDF on export
+Page operations copy page objects, never rasterise (preserve selectable text)
+Pure logic (coordinate mapping, image pipeline) lives in src/lib/ with unit tests
+
+
+Reference
+
+
+Requirements: docs/docusync_PRD.md
+Progress log: docs/progress.txt
+Task prompts: Kanban app
