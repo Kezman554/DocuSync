@@ -15,3 +15,15 @@ DocuSync — Progress Log
 - Upgraded Vitest to v4.1.9 to clear 5 dev-tooling npm audit advisories
   (esbuild/vite/vitest chain; dev-only, not shipped in build).
   Result: npm audit clean (0 vulnerabilities); npm test still green (1 passed).
+
+2026-06-22 — Main application layout
+- Added DocumentContext (src/hooks/) for shared app state: loaded document
+  metadata (file/name/size/numPages) + currentPage, with open/close actions.
+- Built layout components: Toolbar (top), ThumbnailSidebar (left),
+  Viewer (centre), and EmptyState (open-a-PDF prompt).
+- App composes them under DocumentProvider; viewer swaps between empty state
+  and page placeholder based on whether a document is loaded.
+- Responsive: desktop shows fixed sidebar; mobile (<=767px) turns it into an
+  off-canvas drawer toggled from the toolbar, with a scrim to dismiss.
+- Tests: expanded App.test.jsx to 3 (brand, empty state, layout regions);
+  all green. Verified `npm run dev` compiles and boots on :5173.

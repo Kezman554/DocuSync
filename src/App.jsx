@@ -1,25 +1,33 @@
+import { useState } from 'react';
+import { DocumentProvider } from './hooks/DocumentContext.jsx';
+import Toolbar from './components/Toolbar.jsx';
+import ThumbnailSidebar from './components/ThumbnailSidebar.jsx';
+import Viewer from './components/Viewer.jsx';
 import './App.css';
 
 function App() {
+  // Sidebar visibility is only meaningful on mobile, where it acts as a
+  // slide-over drawer. On desktop it is always shown via CSS.
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
-    <div className="app">
-      <header className="app__header">
-        <h1 className="app__title">DocuSync</h1>
-        <p className="app__tagline">
-          Private, browser-based PDF editing — nothing leaves your machine.
-        </p>
-      </header>
-
-      <main className="editor">
-        <aside className="editor__sidebar" aria-label="Page thumbnails">
-          <p className="editor__placeholder">Thumbnails</p>
-        </aside>
-
-        <section className="editor__canvas" aria-label="Document viewer">
-          <p className="editor__placeholder">Open a PDF to get started</p>
-        </section>
-      </main>
-    </div>
+    <DocumentProvider>
+      <div className="app">
+        <Toolbar onToggleSidebar={() => setSidebarOpen((open) => !open)} />
+        <div className="app__body">
+          <ThumbnailSidebar open={sidebarOpen} />
+          {sidebarOpen && (
+            <button
+              type="button"
+              className="app__scrim"
+              aria-label="Close thumbnails"
+              onClick={() => setSidebarOpen(false)}
+            />
+          )}
+          <Viewer />
+        </div>
+      </div>
+    </DocumentProvider>
   );
 }
 

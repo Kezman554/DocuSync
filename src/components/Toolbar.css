@@ -1,0 +1,102 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #34363b;
+  background: #26282d;
+  flex: 0 0 auto;
+}
+
+.toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toolbar__group--center {
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+}
+
+.toolbar__group--end {
+  margin-left: auto;
+}
+
+.toolbar__brand {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.toolbar__filename {
+  font-size: 0.85rem;
+  color: #9aa0a6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.toolbar__btn {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid #4a4d54;
+  background: #3a82f6;
+  border-color: #3a82f6;
+  color: #fff;
+  cursor: pointer;
+}
+
+.toolbar__btn:hover {
+  background: #2f6fd6;
+}
+
+.toolbar__btn--ghost {
+  background: transparent;
+  border-color: #4a4d54;
+  color: #d4d6da;
+}
+
+.toolbar__btn--ghost:hover {
+  background: #34363b;
+}
+
+.toolbar__icon-btn {
+  font: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #d4d6da;
+  cursor: pointer;
+}
+
+.toolbar__icon-btn:hover {
+  background: #34363b;
+}
+
+/* The sidebar toggle is only relevant on mobile. */
+.toolbar__sidebar-toggle {
+  display: none;
+}
+
+.toolbar__file-input {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .toolbar__sidebar-toggle {
+    display: inline-flex;
+  }
+
+  /* Hide the centred filename on narrow screens to save space. */
+  .toolbar__group--center {
+    display: none;
+  }
+}

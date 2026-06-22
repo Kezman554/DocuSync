@@ -4,47 +4,27 @@
   height: 100%;
 }
 
-.app__header {
-  padding: 0.75rem 1.25rem;
-  border-bottom: 1px solid #34363b;
-  background: #26282d;
-}
-
-.app__title {
-  margin: 0;
-  font-size: 1.4rem;
-  letter-spacing: 0.5px;
-}
-
-.app__tagline {
-  margin: 0.15rem 0 0;
-  font-size: 0.85rem;
-  color: #9aa0a6;
-}
-
-.editor {
+.app__body {
+  position: relative;
   display: flex;
   flex: 1;
   min-height: 0;
 }
 
-.editor__sidebar {
-  width: 220px;
-  border-right: 1px solid #34363b;
-  background: #232428;
-  overflow-y: auto;
+/* Scrim behind the mobile sidebar drawer. Hidden on desktop. */
+.app__scrim {
+  display: none;
 }
 
-.editor__canvas {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: auto;
-}
-
-.editor__placeholder {
-  color: #6b7077;
-  font-size: 0.9rem;
-  padding: 1rem;
+@media (max-width: 767px) {
+  .app__scrim {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    border: none;
+    padding: 0;
+    background: rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+  }
 }
