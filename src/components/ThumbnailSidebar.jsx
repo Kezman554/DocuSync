@@ -1,14 +1,15 @@
+import { useState } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
+import PageThumbnail from './PageThumbnail.jsx';
 import './ThumbnailSidebar.css';
 
 function ThumbnailSidebar({ open }) {
-  const { hasDocument, document, currentPage, setCurrentPage } =
+  const { hasDocument, pdfDoc, numPages, currentPage, goToPage } =
     useDocumentContext();
 
-  // Page count is unknown until the PDF is parsed (later task). Until then we
-  // show a single placeholder slot so the layout is demonstrable.
-  const pageCount = document?.numPages ?? (hasDocument ? 1 : 0);
-  const pages = Array.from({ length: pageCount }, (_, i) => i + 1);
+  // Callback ref → state so the scroll container can be passed as the
+  // IntersectionObserver root once it's mounted.
+  const [scrollEl, setScrollEl] = useState(null);
 
   return (
     <aside
@@ -16,23 +17,21 @@ function ThumbnailSidebar({ open }) {
       aria-label="Page thumbnails"
     >
       {hasDocument ? (
-        <ol className="sidebar__list">
-          {pages.map((page) => (
-            <li key={page}>
-              <button
-                type="button"
-                className={`sidebar__thumb${
-                  page === currentPage ? ' sidebar__thumb--active' : ''
-                }`}
-                onClick={() => setCurrentPage(page)}
-                aria-current={page === currentPage ? 'page' : undefined}
-              >
-                <span className="sidebar__thumb-preview" aria-hidden="true" />
-                <span className="sidebar__thumb-label">{page}</span>
-              </button>
-            </li>
-          ))}
-        </ol>
+        <div className="sidebar__scroll" ref={setScrollEl}>
+          <ol className="sidebar__list">
+            {Array.from({ length: numPages }, (_, i) => i + 1).map((page) => (
+              <li key={page}>
+                <PageThumbnail
+                  pdfDoc={pdfDoc}
+                  pageNumber={page}
+                  active={page === currentPage}
+                  onSelect={() => goToPage(page)}
+                  root={scrollEl}
+                />
+              </li>
+            ))}
+          </ol>
+        </div>
       ) : (
         <p className="sidebar__empty">No document open</p>
       )}

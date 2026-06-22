@@ -1,8 +1,16 @@
 .sidebar {
-  flex: 0 0 220px;
-  width: 220px;
+  flex: 0 0 200px;
+  width: 200px;
   border-right: 1px solid #34363b;
   background: #232428;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sidebar__scroll {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 0.75rem;
 }
@@ -40,11 +48,28 @@
   color: #e6e6e6;
 }
 
+/* Stable-sized placeholder so the list height (and lazy observer geometry)
+   doesn't jump before a page has rendered. */
 .sidebar__thumb-preview {
-  width: 100%;
-  aspect-ratio: 3 / 4;
+  width: 140px;
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 4px;
   background: #34363b;
+}
+
+.sidebar__thumb-preview--ready {
+  min-height: 0;
+  background: transparent;
+}
+
+.sidebar__thumb-canvas {
+  display: block;
+  max-width: 100%;
+  border-radius: 2px;
+  background: #fff;
 }
 
 .sidebar__thumb-label {
@@ -55,7 +80,7 @@
   color: #6b7077;
   font-size: 0.85rem;
   text-align: center;
-  margin-top: 1rem;
+  margin: 1rem 0.75rem;
 }
 
 /* On mobile the sidebar becomes an off-canvas drawer. */

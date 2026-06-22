@@ -45,3 +45,15 @@ DocuSync — Progress Log
 - Tests: 11 passing (3 App + 8 zoom). Production build splits pdf.js core and
   worker into lazy chunks. End-to-end smoke (pdf-lib -> pdf.js) confirmed
   numPages and correct viewport scaling.
+
+2026-06-22 — Thumbnail sidebar
+- src/hooks/useInView.js: IntersectionObserver hook returning [ref, inView];
+  latches true once visible then disconnects. Eager fallback when IO absent.
+- PageThumbnail.jsx: renders its page to a 140px-wide canvas only once near
+  view (rootMargin 300px), cancels stale renders, shows a stable-size grey
+  placeholder until ready, and scrollIntoView when it becomes the active page.
+- ThumbnailSidebar maps over real numPages; its scroll container is the IO
+  root (callback-ref -> state). Active page highlighted; click -> goToPage.
+- Lazy: long docs don't render every thumbnail up front, only as scrolled in.
+- Verified: 11 tests still green; build clean; 50-page smoke confirms numPages
+  and 140x181 thumbnail scale. (IO lazy behaviour is browser-only.)
