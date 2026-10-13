@@ -21,6 +21,8 @@ import {
   nudgePages as nudgePagesModel,
   rotatePages,
 } from '../lib/pageModel.js';
+import { buildPdf, exportFileName, ExportError } from '../lib/exportPdf.js';
+import { downloadBytes } from '../lib/download.js';
 
 /**
  * Shared application state for the loaded PDF, page model, selection, and zoom.
@@ -43,12 +45,21 @@ export function DocumentProvider({ children }) {
   const [scale, setScale] = useState(DEFAULT_SCALE);
   const [status, setStatus] = useState('idle'); // idle | loading | ready | error
   const [error, setError] = useState(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(null);
+
+  // The original File, kept so export can re-read pristine bytes (pdf.js
+  // transfers the buffer it was given to its worker, detaching it).
+  const fileRef = useRef(null);
 
   // Track the most recent open request so a slow load can't clobber a newer one.
   const loadTokenRef = useRef(0);
 
   const closeDocument = useCallback(() => {
     loadTokenRef.current += 1;
+    fileRef.current = null;
+    setExporting(false);
+    setExportError(null);
     setPdfDoc((prev) => {
       prev?.destroy?.();
       return null;
@@ -80,6 +91,9 @@ export function DocumentProvider({ children }) {
         prev?.destroy?.();
         return pdf;
       });
+      fileRef.current = file;
+      setExporting(false);
+      setExportError(null);
       const model = createPageModel(pdf.numPages);
       setPages(model);
       setSelected(new Set(model[0] ? [model[0].id] : []));
@@ -205,6 +219,30 @@ export function DocumentProvider({ children }) {
     setAnchorId(next[index].id);
   }, [pendingDelete, pages, currentPage]);
 
+  /** Bake the page model into a new PDF and download it. */
+  const exportDocument = useCallback(async () => {
+    const file = fileRef.current;
+    if (!file || pages.length === 0) return;
+    const token = loadTokenRef.current;
+    setExporting(true);
+    setExportError(null);
+    try {
+      const bytes = await buildPdf(await file.arrayBuffer(), pages);
+      if (loadTokenRef.current !== token) return; // document changed meanwhile
+      downloadBytes(bytes, exportFileName(file.name));
+    } catch (err) {
+      if (loadTokenRef.current !== token) return;
+      // eslint-disable-next-line no-console
+      console.error('Export failed', err);
+      setExportError(
+        err instanceof ExportError ? err.message : 'Export failed. Please try again.'
+      );
+    } finally {
+      if (loadTokenRef.current === token) setExporting(false);
+    }
+  }, [pages]);
+  const dismissExportError = useCallback(() => setExportError(null), []);
+
   const zoomIn = useCallback(() => setScale((s) => zoomInScale(s)), []);
   const zoomOut = useCallback(() => setScale((s) => zoomOutScale(s)), []);
   const resetZoom = useCallback(() => setScale(DEFAULT_SCALE), []);
@@ -225,6 +263,8 @@ export function DocumentProvider({ children }) {
       scale,
       status,
       error,
+      exporting,
+      exportError,
       openDocument,
       closeDocument,
       goToPage,
@@ -239,6 +279,8 @@ export function DocumentProvider({ children }) {
       requestDelete,
       cancelDelete,
       confirmDelete,
+      exportDocument,
+      dismissExportError,
       zoomIn,
       zoomOut,
       resetZoom,
@@ -255,6 +297,8 @@ export function DocumentProvider({ children }) {
       scale,
       status,
       error,
+      exporting,
+      exportError,
       openDocument,
       closeDocument,
       goToPage,
@@ -269,6 +313,8 @@ export function DocumentProvider({ children }) {
       requestDelete,
       cancelDelete,
       confirmDelete,
+      exportDocument,
+      dismissExportError,
       zoomIn,
       zoomOut,
       resetZoom,

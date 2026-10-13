@@ -42,16 +42,29 @@ export function setupDom() {
   viewportCalls.length = 0;
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({});
   Element.prototype.scrollIntoView ??= () => {};
+  // jsdom's Blob/File lacks arrayBuffer(); export re-reads the file with it.
+  Blob.prototype.arrayBuffer ??= function arrayBuffer() {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(this);
+    });
+  };
 }
 
-/** Render the app, open the fake PDF and wait for the first renders. */
-export async function openPdf(App, user) {
+/**
+ * Render the app, open a PDF and wait for the first renders. pdf.js is mocked,
+ * so `file` only matters to code that re-reads it (export).
+ */
+export async function openPdf(
+  App,
+  user,
+  file = new File(['%PDF-1.7'], 'sample.pdf', { type: 'application/pdf' })
+) {
   const utils = render(<App />);
   const input = utils.container.querySelector('input[type="file"]');
-  await user.upload(
-    input,
-    new File(['%PDF-1.7'], 'sample.pdf', { type: 'application/pdf' })
-  );
+  await user.upload(input, file);
   await screen.findByText(`Page 1 of ${NUM_PAGES}`);
   // IntersectionObserver is absent in jsdom → thumbnails render eagerly.
   await waitFor(() => {

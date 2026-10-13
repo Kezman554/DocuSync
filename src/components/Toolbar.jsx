@@ -3,8 +3,16 @@ import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import './Toolbar.css';
 
 function Toolbar({ onToggleSidebar }) {
-  const { hasDocument, document, openDocument, closeDocument } =
-    useDocumentContext();
+  const {
+    hasDocument,
+    document,
+    openDocument,
+    closeDocument,
+    exporting,
+    exportError,
+    exportDocument,
+    dismissExportError,
+  } = useDocumentContext();
   const inputRef = useRef(null);
 
   const handleFileChange = (event) => {
@@ -40,9 +48,21 @@ function Toolbar({ onToggleSidebar }) {
       </div>
 
       <div className="toolbar__group toolbar__group--end">
+        {hasDocument && (
+          <button
+            type="button"
+            className="toolbar__btn"
+            onClick={exportDocument}
+            disabled={exporting}
+            aria-busy={exporting}
+            title="Download a new PDF with your page edits applied"
+          >
+            {exporting ? 'Exporting…' : 'Export PDF'}
+          </button>
+        )}
         <button
           type="button"
-          className="toolbar__btn"
+          className={`toolbar__btn${hasDocument ? ' toolbar__btn--ghost' : ''}`}
           onClick={() => inputRef.current?.click()}
         >
           {hasDocument ? 'Open another' : 'Open PDF'}
@@ -64,6 +84,20 @@ function Toolbar({ onToggleSidebar }) {
           onChange={handleFileChange}
         />
       </div>
+
+      {exportError && (
+        <div className="toolbar__alert" role="alert">
+          <span>{exportError}</span>
+          <button
+            type="button"
+            className="toolbar__icon-btn"
+            onClick={dismissExportError}
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </header>
   );
 }

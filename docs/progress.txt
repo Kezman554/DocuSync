@@ -96,3 +96,23 @@ DocuSync — Progress Log
   keyboard move, rotation kept through move, confirm/cancel/Esc delete,
   multi-delete, delete-last, can't delete all). Build clean.
 - Note: HTML5 DnD has no touch support — mobile reorder needs a later pass.
+
+2026-10-13 — Export
+- src/lib/exportPdf.js: buildPdf(sourceBytes, pages) — pdf-lib (lazy import,
+  own chunk) loads the ORIGINAL bytes, copyPages in model order (object copy,
+  never rasterised; inherited MediaBox/Resources/Rotate flattened), sets
+  /Rotate = intrinsic + edit, carries over title/author/subject/keywords/
+  creator. ExportError with user-facing messages for encrypted/unreadable
+  files and page-count mismatch (pdf-lib is lenient: junk "loads" with no
+  page tree, so getPageCount is inside the guarded load). exportFileName ->
+  "<name>-edited.pdf".
+- src/lib/download.js: Blob + object URL + <a download>; revoked after 1s.
+- DocumentContext keeps the original File in a ref (pdf.js detaches the
+  buffer it's given) and re-reads it at export; exportDocument/exporting/
+  exportError with stale-document guard.
+- Toolbar: "Export PDF" primary button (busy state) + dismissible error alert.
+- Tests: 53 passing. exportPdf.test.js runs in node with real pdf-lib +
+  pdf.js: round-trip, reorder/rotate/delete (incl. intrinsic /Rotate), text
+  extracted by pdf.js from output (= selectable), no image XObjects, source
+  bytes unchanged, metadata, errors. export.test.jsx drives the UI on a real
+  PDF and checks the downloaded bytes; plus error alert.
