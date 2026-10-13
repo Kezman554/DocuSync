@@ -87,6 +87,8 @@ export function DocumentProvider({ children }) {
   const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState(null); // dismissible error message
   const [progress, setProgress] = useState(null); // { done, total } while rendering images
+  // Image files waiting in the "Create a PDF from images" dialog.
+  const [imagesToPdf, setImagesToPdf] = useState(null);
   // select | marker | text | image | stamp
   const [tool, setToolState] = useState('select');
   // Image chosen with "Add image" (or an image stamp), waiting to be placed.
@@ -497,6 +499,12 @@ export function DocumentProvider({ children }) {
   );
   const dismissNotice = useCallback(() => setNotice(null), []);
 
+  /** Open the images → PDF dialog with `files` (null closes it). */
+  const requestImagesToPdf = useCallback((files) => {
+    const list = Array.from(files ?? []);
+    setImagesToPdf(list.length ? list : null);
+  }, []);
+
   // --- Annotations (stored on page entries; see lib/annotations.js) -------
 
   /**
@@ -651,6 +659,8 @@ export function DocumentProvider({ children }) {
       exportDocument,
       extractPages,
       exportImages,
+      imagesToPdf,
+      requestImagesToPdf,
       dismissNotice,
       tool,
       setTool,
@@ -709,6 +719,8 @@ export function DocumentProvider({ children }) {
       exportDocument,
       extractPages,
       exportImages,
+      imagesToPdf,
+      requestImagesToPdf,
       dismissNotice,
       tool,
       setTool,

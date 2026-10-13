@@ -404,3 +404,29 @@ DocuSync — Progress Log
   a pdf-lib-reading stand-in renderer: single JPG, ZIP of rotated range,
   numbering after reorder, progress, validation + failure notice). Mutation
   check: rendering all pages instead of the selection fails 4.
+
+2026-10-13 — Images -> PDF
+- src/lib/imagesToPdf.js (pure + lazy pdf-lib): one image per page.
+  PNG/JPEG embedded as-is (JPEG stream byte-identical, no recompression; PNG
+  alpha -> SMask). exifOrientation() reads JPEG APP1 IFD0 tag 0x0112;
+  orientationMatrix() draws the stored image with the rotation/mirror for
+  all 8 EXIF orientations (PDF viewers ignore EXIF; phone photos would be
+  sideways). layoutImagePage(): Letter/A4 turned to match the image, fitted
+  within margins (none/¼"/½"), centred, never enlarged past natural size
+  (96 dpi -> 0.75 pt/px); "fit" = page is the image (capped 200 in).
+  defaultPageSize(locale): Letter for US/CA/MX/PH, else A4.
+- src/lib/imageFiles.js (browser): prepareImageFile — PNG/JPEG direct (+EXIF);
+  other browser-decodable formats (WebP, GIF, BMP, AVIF) converted to PNG via
+  createImageBitmap(from-image) + canvas; unreadable (e.g. HEIC) -> error.
+- ImagesToPdfDialog: thumbnails, reorder (↑/↓), remove, "Add more…", page
+  size, margins, file name, Then: open for editing / add pages to this
+  document / download. Entry points: toolbar "From images…", empty state
+  "Create PDF from images", and dropping image files (PDF drops unchanged).
+- Fixtures: tests/fixtures/exif/orient-1..8.jpg (Pillow; each displays as the
+  same upright 4-colour image per Pillow's exif_transpose).
+- Verified in headless Edge: all 8 orientations + a browser-made WebP, built
+  through prepareImageFile + buildImagesPdf and rendered by pdf.js, match the
+  browser's own EXIF-aware decode exactly at every quadrant centre.
+- Tests: 268 passing (+12 pure: EXIF, matrices map onto the rect with correct
+  handedness, layout, build read back via pdf.js op replay, byte-identical
+  JPEG; +5 dialog). Mutation check: ignoring EXIF fails 2.

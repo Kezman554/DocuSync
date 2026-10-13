@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DocumentProvider } from './hooks/DocumentContext.jsx';
+import { DocumentProvider, useDocumentContext } from './hooks/DocumentContext.jsx';
 import { StampsProvider } from './hooks/StampsContext.jsx';
 import Toolbar from './components/Toolbar.jsx';
 import ThumbnailSidebar from './components/ThumbnailSidebar.jsx';
@@ -7,7 +7,16 @@ import Viewer from './components/Viewer.jsx';
 import DropZone from './components/DropZone.jsx';
 import DeletePagesDialog from './components/DeletePagesDialog.jsx';
 import StampsPanel from './components/StampsPanel.jsx';
+import ImagesToPdfDialog from './components/ImagesToPdfDialog.jsx';
 import './App.css';
+
+/** The images → PDF dialog, shown while files are waiting in it. */
+function ImagesToPdfHost() {
+  const { imagesToPdf, requestImagesToPdf } = useDocumentContext();
+  return imagesToPdf ? (
+    <ImagesToPdfDialog files={imagesToPdf} onClose={() => requestImagesToPdf(null)} />
+  ) : null;
+}
 
 function App() {
   // Sidebar visibility is only meaningful on mobile, where it acts as a
@@ -40,6 +49,7 @@ function App() {
             </div>
           </DropZone>
           <DeletePagesDialog />
+          <ImagesToPdfHost />
         </div>
       </StampsProvider>
     </DocumentProvider>

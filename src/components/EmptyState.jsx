@@ -3,8 +3,9 @@ import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import './EmptyState.css';
 
 function EmptyState() {
-  const { openDocuments } = useDocumentContext();
+  const { openDocuments, requestImagesToPdf } = useDocumentContext();
   const inputRef = useRef(null);
+  const imagesRef = useRef(null);
 
   const handleFileChange = (event) => {
     const files = Array.from(event.target.files ?? []);
@@ -28,6 +29,26 @@ function EmptyState() {
       >
         Open PDF
       </button>
+      <button
+        type="button"
+        className="empty-state__btn empty-state__btn--secondary"
+        onClick={() => imagesRef.current?.click()}
+      >
+        Create PDF from images
+      </button>
+      <input
+        ref={imagesRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="empty-state__file-input"
+        aria-label="Choose images"
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? []);
+          event.target.value = '';
+          requestImagesToPdf(files);
+        }}
+      />
       <input
         ref={inputRef}
         type="file"

@@ -17,10 +17,12 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
     progress,
     notice,
     exportDocument,
+    requestImagesToPdf,
     dismissNotice,
   } = useDocumentContext();
   const inputRef = useRef(null);
   const addInputRef = useRef(null);
+  const imagesInputRef = useRef(null);
   const [extractOpen, setExtractOpen] = useState(false);
   const [imagesOpen, setImagesOpen] = useState(false);
 
@@ -128,6 +130,14 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
         )}
         <button
           type="button"
+          className="toolbar__btn toolbar__btn--ghost"
+          onClick={() => imagesInputRef.current?.click()}
+          title="Create a PDF from photos or images"
+        >
+          From images…
+        </button>
+        <button
+          type="button"
           className={`toolbar__btn${hasDocument ? ' toolbar__btn--ghost' : ''}`}
           onClick={() => inputRef.current?.click()}
         >
@@ -159,6 +169,15 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
           className="toolbar__file-input"
           onChange={handleAddChange}
           aria-label="Add PDF files"
+        />
+        <input
+          ref={imagesInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="toolbar__file-input"
+          onChange={(event) => requestImagesToPdf(takeFiles(event))}
+          aria-label="Choose images for a new PDF"
         />
       </div>
 

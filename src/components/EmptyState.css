@@ -41,6 +41,16 @@
   background: #2f6fd6;
 }
 
+.empty-state__btn--secondary {
+  background: transparent;
+  border: 1px solid #4a4d54;
+  color: #d4d6da;
+}
+
+.empty-state__btn--secondary:hover {
+  background: #34363b;
+}
+
 .empty-state__file-input {
   display: none;
 }

@@ -2,6 +2,10 @@ import { useCallback, useRef, useState } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import './DropZone.css';
 
+function isImage(file) {
+  return file && (/^image\//.test(file.type) || /\.(png|jpe?g|webp|gif|bmp|avif|heic)$/i.test(file.name));
+}
+
 function isPdf(file) {
   return (
     file && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name))
@@ -14,7 +18,7 @@ function isPdf(file) {
  * doesn't flicker as the cursor moves across child elements.
  */
 function DropZone({ children }) {
-  const { hasDocument, openDocuments, addDocuments } = useDocumentContext();
+  const { hasDocument, openDocuments, addDocuments, requestImagesToPdf } = useDocumentContext();
   const [dragging, setDragging] = useState(false);
   const depthRef = useRef(0);
 
@@ -42,14 +46,19 @@ function DropZone({ children }) {
       e.preventDefault();
       depthRef.current = 0;
       setDragging(false);
-      const files = Array.from(e.dataTransfer?.files ?? []).filter(isPdf);
-      if (files.length === 0) return;
+      const dropped = Array.from(e.dataTransfer?.files ?? []);
+      const pdfs = dropped.filter(isPdf);
+      const images = dropped.filter((f) => !isPdf(f) && isImage(f));
       // With a document open, dropped PDFs are merged in (appended);
       // otherwise they're opened (several at once = merged in drop order).
-      if (hasDocument) addDocuments(files);
-      else openDocuments(files);
+      if (pdfs.length) {
+        if (hasDocument) addDocuments(pdfs);
+        else openDocuments(pdfs);
+      } else if (images.length) {
+        requestImagesToPdf(images); // images only → offer to make a PDF
+      }
     },
-    [hasDocument, addDocuments, openDocuments]
+    [hasDocument, addDocuments, openDocuments, requestImagesToPdf]
   );
 
   return (
@@ -64,7 +73,9 @@ function DropZone({ children }) {
       {dragging && (
         <div className="dropzone__overlay" aria-hidden="true">
           <div className="dropzone__hint">
-            {hasDocument ? 'Drop PDFs to add their pages' : 'Drop PDF to open'}
+            {hasDocument
+              ? 'Drop PDFs to add their pages, or images to make a PDF'
+              : 'Drop a PDF to open, or images to make a PDF'}
           </div>
         </div>
       )}

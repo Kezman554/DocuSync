@@ -44,6 +44,7 @@ export const fakePdf = makeFakePdf('sample.pdf', NUM_PAGES);
 export const extraPdfs = {
   'extra.pdf': makeFakePdf('extra.pdf', 2),
   'broken.pdf': null, // loader rejects
+  'images.pdf': makeFakePdf('images.pdf', 2), // made by images → PDF
 };
 
 export function pdfFor(file) {
