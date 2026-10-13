@@ -7,22 +7,31 @@ function Toolbar({ onToggleSidebar }) {
   const {
     hasDocument,
     document,
-    openDocument,
+    sources,
+    openDocuments,
+    addDocuments,
     closeDocument,
+    adding,
     exporting,
-    exportError,
+    notice,
     exportDocument,
-    dismissExportError,
+    dismissNotice,
   } = useDocumentContext();
   const inputRef = useRef(null);
+  const addInputRef = useRef(null);
   const [extractOpen, setExtractOpen] = useState(false);
 
-  const handleFileChange = (event) => {
-    const file = event.target.files?.[0];
-    if (file) openDocument(file);
+  // Copy the FileList before resetting the input (reset empties it).
+  const takeFiles = (event) => {
+    const files = Array.from(event.target.files ?? []);
     // Reset so selecting the same file again re-triggers change.
     event.target.value = '';
+    return files;
   };
+  const handleFileChange = (event) => openDocuments(takeFiles(event));
+  const handleAddChange = (event) => addDocuments(takeFiles(event));
+
+  const extraSources = sources.length - 1;
 
   return (
     <header className="toolbar">
@@ -43,8 +52,12 @@ function Toolbar({ onToggleSidebar }) {
 
       <div className="toolbar__group toolbar__group--center">
         {hasDocument && (
-          <span className="toolbar__filename" title={document.name}>
+          <span
+            className="toolbar__filename"
+            title={sources.map((src) => src.name).join('\n')}
+          >
             {document.name}
+            {extraSources > 0 && ` + ${extraSources} more`}
           </span>
         )}
       </div>
@@ -73,6 +86,18 @@ function Toolbar({ onToggleSidebar }) {
             Extract pages…
           </button>
         )}
+        {hasDocument && (
+          <button
+            type="button"
+            className="toolbar__btn toolbar__btn--ghost"
+            onClick={() => addInputRef.current?.click()}
+            disabled={adding}
+            aria-busy={adding}
+            title="Merge: append pages from other PDFs"
+          >
+            {adding ? 'Adding…' : 'Add PDF…'}
+          </button>
+        )}
         <button
           type="button"
           className={`toolbar__btn${hasDocument ? ' toolbar__btn--ghost' : ''}`}
@@ -93,8 +118,19 @@ function Toolbar({ onToggleSidebar }) {
           ref={inputRef}
           type="file"
           accept="application/pdf,.pdf"
+          multiple
           className="toolbar__file-input"
           onChange={handleFileChange}
+          aria-label="Open PDF files"
+        />
+        <input
+          ref={addInputRef}
+          type="file"
+          accept="application/pdf,.pdf"
+          multiple
+          className="toolbar__file-input"
+          onChange={handleAddChange}
+          aria-label="Add PDF files"
         />
       </div>
 
@@ -102,13 +138,13 @@ function Toolbar({ onToggleSidebar }) {
         <ExtractPagesDialog onClose={() => setExtractOpen(false)} />
       )}
 
-      {exportError && (
+      {notice && (
         <div className="toolbar__alert" role="alert">
-          <span>{exportError}</span>
+          <span>{notice}</span>
           <button
             type="button"
             className="toolbar__icon-btn"
-            onClick={dismissExportError}
+            onClick={dismissNotice}
             aria-label="Dismiss"
           >
             ×

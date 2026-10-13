@@ -1,19 +1,25 @@
 /**
  * In-memory document model: an ordered list of page entries.
  *
- * Each entry points at a page in the source PDF and carries the user's
- * non-destructive edits (currently rotation). The source document is never
- * modified — edits are only baked in on export.
+ * Each entry points at a page in one of the loaded source PDFs (several when
+ * merging) and carries the user's non-destructive edits (currently rotation).
+ * Source documents are never modified — edits are only baked in on export.
  *
- *   { id: string, sourcePage: number (1-based), rotation: 0 | 90 | 180 | 270 }
+ *   {
+ *     id: string,            unique across all sources, e.g. "s2-5"
+ *     sourceId: string,      which loaded PDF, e.g. "s2"
+ *     sourcePage: number,    1-based page within that PDF
+ *     rotation: 0 | 90 | 180 | 270,
+ *   }
  *
  * All functions are pure and return new arrays/sets rather than mutating.
  */
 
-/** Build the initial model: one entry per source page, in source order. */
-export function createPageModel(numPages) {
+/** One entry per page of source `sourceId`, in source order. */
+export function createPageModel(numPages, sourceId = 's1') {
   return Array.from({ length: Math.max(0, numPages | 0) }, (_, i) => ({
-    id: `p${i + 1}`,
+    id: `${sourceId}-${i + 1}`,
+    sourceId,
     sourcePage: i + 1,
     rotation: 0,
   }));

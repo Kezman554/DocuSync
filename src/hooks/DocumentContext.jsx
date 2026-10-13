@@ -30,18 +30,31 @@ import {
 import { downloadBytes } from '../lib/download.js';
 
 /**
- * Shared application state for the loaded PDF, page model, selection, and zoom.
+ * Shared application state for the loaded PDFs, page model, selection, and zoom.
  *
- * Holds the pdf.js PDFDocumentProxy (read-only source) plus the in-memory page
- * model — an ordered list of { id, sourcePage, rotation } entries that carries
- * the user's non-destructive edits. `currentPage` is a 1-based position in that
- * list, not a source page number.
+ * `sources` holds every loaded PDF (one normally; more after merging), each
+ * with its read-only pdf.js proxy and original File. The page model is a
+ * single ordered list of { id, sourceId, sourcePage, rotation } entries across
+ * all sources, so pages can be reordered freely between documents.
+ * `currentPage` is a 1-based position in that list.
  */
 const DocumentContext = createContext(null);
 
+function describeFailures(failures) {
+  if (failures.length === 1) {
+    const [f] = failures;
+    return `Couldn’t open “${f.name}”${f.message ? `: ${f.message}` : '.'}`;
+  }
+  return `Couldn’t open ${failures.length} files: ${failures
+    .map((f) => `“${f.name}”`)
+    .join(', ')}.`;
+}
+
 export function DocumentProvider({ children }) {
-  const [document, setDocument] = useState(null); // { name, size, numPages }
-  const [pdfDoc, setPdfDoc] = useState(null); // pdf.js PDFDocumentProxy
+  // [{ id, name, size, numPages, pdfDoc, file }] — the first is the primary
+  // document. The File is kept so export can re-read pristine bytes (pdf.js
+  // transfers the buffer it was given to its worker, detaching it).
+  const [sources, setSources] = useState([]);
   const [pages, setPages] = useState([]); // see lib/pageModel.js
   const [selected, setSelected] = useState(() => new Set()); // page ids
   const [anchorId, setAnchorId] = useState(null); // shift-click range anchor
@@ -50,26 +63,38 @@ export function DocumentProvider({ children }) {
   const [scale, setScale] = useState(DEFAULT_SCALE);
   const [status, setStatus] = useState('idle'); // idle | loading | ready | error
   const [error, setError] = useState(null);
+  const [adding, setAdding] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState(null);
+  const [notice, setNotice] = useState(null); // dismissible error message
 
-  // The original File, kept so export can re-read pristine bytes (pdf.js
-  // transfers the buffer it was given to its worker, detaching it).
-  const fileRef = useRef(null);
-
-  // Track the most recent open request so a slow load can't clobber a newer one.
+  // Track the most recent open/close so a slow load can't clobber a newer one.
   const loadTokenRef = useRef(0);
+  const nextSourceRef = useRef(1);
+  // Latest committed values, for async actions that finish later.
+  const pagesRef = useRef(pages);
+  pagesRef.current = pages;
+  const sourcesRef = useRef(sources);
+  sourcesRef.current = sources;
+
+  const sourcesById = useMemo(
+    () => Object.fromEntries(sources.map((src) => [src.id, src])),
+    [sources]
+  );
+  const primary = sources[0] ?? null;
+  const document = useMemo(
+    () =>
+      primary && {
+        name: primary.name,
+        size: primary.size,
+        numPages: primary.numPages,
+      },
+    [primary]
+  );
 
   const closeDocument = useCallback(() => {
     loadTokenRef.current += 1;
-    fileRef.current = null;
-    setExporting(false);
-    setExportError(null);
-    setPdfDoc((prev) => {
-      prev?.destroy?.();
-      return null;
-    });
-    setDocument(null);
+    sourcesRef.current.forEach((src) => src.pdfDoc?.destroy?.());
+    setSources([]);
     setPages([]);
     setSelected(new Set());
     setAnchorId(null);
@@ -78,47 +103,123 @@ export function DocumentProvider({ children }) {
     setScale(DEFAULT_SCALE);
     setStatus('idle');
     setError(null);
+    setAdding(false);
+    setExporting(false);
+    setNotice(null);
   }, []);
 
-  const openDocument = useCallback(async (file) => {
-    if (!file) return;
-    const token = (loadTokenRef.current += 1);
-    setStatus('loading');
-    setError(null);
-    try {
-      const pdf = await loadPdfDocument(file);
+  /**
+   * Load `files` with pdf.js, giving each a new source id. Files that fail
+   * are reported in `failures` rather than aborting the rest.
+   */
+  const loadSources = useCallback(async (files) => {
+    const results = await Promise.allSettled(files.map((f) => loadPdfDocument(f)));
+    const loaded = [];
+    const failures = [];
+    results.forEach((result, i) => {
+      const file = files[i];
+      if (result.status === 'fulfilled') {
+        const pdfDoc = result.value;
+        loaded.push({
+          id: `s${nextSourceRef.current++}`,
+          name: file.name,
+          size: file.size,
+          numPages: pdfDoc.numPages,
+          pdfDoc,
+          file,
+        });
+      } else {
+        failures.push({ name: file.name, message: result.reason?.message });
+      }
+    });
+    return { loaded, failures };
+  }, []);
+
+  /** Open one or more PDFs as a new document (several are merged, in order). */
+  const openDocuments = useCallback(
+    async (files) => {
+      const list = Array.from(files ?? []);
+      if (list.length === 0) return;
+      const token = (loadTokenRef.current += 1);
+      setStatus('loading');
+      setError(null);
+
+      const { loaded, failures } = await loadSources(list);
       if (loadTokenRef.current !== token) {
         // A newer open/close happened while we were loading — discard this one.
-        pdf?.destroy?.();
+        loaded.forEach((src) => src.pdfDoc?.destroy?.());
         return;
       }
-      setPdfDoc((prev) => {
-        prev?.destroy?.();
-        return pdf;
-      });
-      fileRef.current = file;
-      setExporting(false);
-      setExportError(null);
-      const model = createPageModel(pdf.numPages);
-      setPages(model);
-      setSelected(new Set(model[0] ? [model[0].id] : []));
-      setAnchorId(model[0]?.id ?? null);
+
+      sourcesRef.current.forEach((src) => src.pdfDoc?.destroy?.());
       setPendingDelete(null);
-      setDocument({ name: file.name, size: file.size, numPages: pdf.numPages });
-      setCurrentPage(1);
+      setAdding(false);
+      setExporting(false);
       setScale(DEFAULT_SCALE);
+      setCurrentPage(1);
+
+      if (loaded.length === 0) {
+        setError(failures[0]?.message ?? 'Failed to open PDF');
+        setStatus('error');
+        setSources([]);
+        setPages([]);
+        setSelected(new Set());
+        setAnchorId(null);
+        setNotice(null);
+        return;
+      }
+
+      const model = loaded.flatMap((src) => createPageModel(src.numPages, src.id));
+      setSources(loaded);
+      setPages(model);
+      setSelected(new Set([model[0].id]));
+      setAnchorId(model[0].id);
+      setNotice(failures.length ? describeFailures(failures) : null);
       setStatus('ready');
-    } catch (err) {
-      if (loadTokenRef.current !== token) return;
-      setError(err?.message ?? 'Failed to open PDF');
-      setStatus('error');
-      setPdfDoc(null);
-      setDocument(null);
-      setPages([]);
-      setSelected(new Set());
-      setAnchorId(null);
-    }
-  }, []);
+    },
+    [loadSources]
+  );
+
+  const openDocument = useCallback(
+    (file) => (file ? openDocuments([file]) : undefined),
+    [openDocuments]
+  );
+
+  /**
+   * Merge: load more PDFs and append their pages to the end of the model.
+   * The new pages become the selection and the first of them is shown.
+   */
+  const addDocuments = useCallback(
+    async (files) => {
+      const list = Array.from(files ?? []);
+      if (list.length === 0) return;
+      if (sourcesRef.current.length === 0) {
+        await openDocuments(list);
+        return;
+      }
+      const token = loadTokenRef.current;
+      setAdding(true);
+      setNotice(null);
+
+      const { loaded, failures } = await loadSources(list);
+      if (loadTokenRef.current !== token) {
+        loaded.forEach((src) => src.pdfDoc?.destroy?.());
+        return;
+      }
+      setAdding(false);
+      if (failures.length) setNotice(describeFailures(failures));
+      if (loaded.length === 0) return;
+
+      const added = loaded.flatMap((src) => createPageModel(src.numPages, src.id));
+      const before = pagesRef.current;
+      setSources((prev) => [...prev, ...loaded]);
+      setPages([...before, ...added]);
+      setSelected(new Set(added.map((p) => p.id)));
+      setAnchorId(added[0].id);
+      setCurrentPage(before.length + 1);
+    },
+    [loadSources, openDocuments]
+  );
 
   const numPages = pages.length;
 
@@ -227,34 +328,44 @@ export function DocumentProvider({ children }) {
   /**
    * Build a PDF from `entries` (a slice of the page model) and download it.
    * Shared by full export and page extraction. Resolves true on success.
+   * `makeFileName(primaryName, merged)` names the download.
    */
-  const runExport = useCallback(async (entries, makeFileName) => {
-    const file = fileRef.current;
-    if (!file || entries.length === 0) return false;
-    const token = loadTokenRef.current;
-    setExporting(true);
-    setExportError(null);
-    try {
-      const bytes = await buildPdf(await file.arrayBuffer(), entries);
-      if (loadTokenRef.current !== token) return false; // document changed meanwhile
-      downloadBytes(bytes, makeFileName(file.name));
-      return true;
-    } catch (err) {
-      if (loadTokenRef.current !== token) return;
-      // eslint-disable-next-line no-console
-      console.error('Export failed', err);
-      setExportError(
-        err instanceof ExportError ? err.message : 'Export failed. Please try again.'
-      );
-      return false;
-    } finally {
-      if (loadTokenRef.current === token) setExporting(false);
-    }
-  }, []);
+  const runExport = useCallback(
+    async (entries, makeFileName) => {
+      if (!primary || entries.length === 0) return false;
+      const token = loadTokenRef.current;
+      setExporting(true);
+      setNotice(null);
+      try {
+        // Re-read only the source files these pages actually come from.
+        const usedIds = [...new Set(entries.map((p) => p.sourceId))];
+        const inputs = {};
+        for (const id of usedIds) {
+          const src = sourcesById[id];
+          if (src) inputs[id] = { name: src.name, bytes: await src.file.arrayBuffer() };
+        }
+        const bytes = await buildPdf(inputs, entries);
+        if (loadTokenRef.current !== token) return false; // document changed meanwhile
+        downloadBytes(bytes, makeFileName(primary.name, usedIds.length > 1));
+        return true;
+      } catch (err) {
+        if (loadTokenRef.current !== token) return false;
+        // eslint-disable-next-line no-console
+        console.error('Export failed', err);
+        setNotice(
+          err instanceof ExportError ? err.message : 'Export failed. Please try again.'
+        );
+        return false;
+      } finally {
+        if (loadTokenRef.current === token) setExporting(false);
+      }
+    },
+    [primary, sourcesById]
+  );
 
   /** Bake the whole page model into a new PDF and download it. */
   const exportDocument = useCallback(
-    () => runExport(pages, exportFileName),
+    () => runExport(pages, (name, merged) => exportFileName(name, { merged })),
     [runExport, pages]
   );
 
@@ -269,7 +380,7 @@ export function DocumentProvider({ children }) {
     },
     [runExport, pages]
   );
-  const dismissExportError = useCallback(() => setExportError(null), []);
+  const dismissNotice = useCallback(() => setNotice(null), []);
 
   const zoomIn = useCallback(() => setScale((s) => zoomInScale(s)), []);
   const zoomOut = useCallback(() => setScale((s) => zoomOutScale(s)), []);
@@ -278,8 +389,9 @@ export function DocumentProvider({ children }) {
   const value = useMemo(
     () => ({
       document,
-      pdfDoc,
-      hasDocument: pdfDoc !== null,
+      sources,
+      sourcesById,
+      hasDocument: sources.length > 0,
       pages,
       numPages,
       currentPage,
@@ -291,9 +403,12 @@ export function DocumentProvider({ children }) {
       scale,
       status,
       error,
+      adding,
       exporting,
-      exportError,
+      notice,
       openDocument,
+      openDocuments,
+      addDocuments,
       closeDocument,
       goToPage,
       nextPage,
@@ -309,26 +424,31 @@ export function DocumentProvider({ children }) {
       confirmDelete,
       exportDocument,
       extractPages,
-      dismissExportError,
+      dismissNotice,
       zoomIn,
       zoomOut,
       resetZoom,
     }),
     [
       document,
-      pdfDoc,
+      sources,
+      sourcesById,
       pages,
       numPages,
       currentPage,
       selected,
+      targetIds,
       pendingDelete,
       canDelete,
       scale,
       status,
       error,
+      adding,
       exporting,
-      exportError,
+      notice,
       openDocument,
+      openDocuments,
+      addDocuments,
       closeDocument,
       goToPage,
       nextPage,
@@ -336,7 +456,6 @@ export function DocumentProvider({ children }) {
       selectPage,
       rotateLeft,
       rotateRight,
-      targetIds,
       movePages,
       nudgeSelected,
       requestDelete,
@@ -344,7 +463,7 @@ export function DocumentProvider({ children }) {
       confirmDelete,
       exportDocument,
       extractPages,
-      dismissExportError,
+      dismissNotice,
       zoomIn,
       zoomOut,
       resetZoom,

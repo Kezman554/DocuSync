@@ -11,6 +11,7 @@ const THUMB_WIDTH = 140; // CSS px
  */
 function PageThumbnail({
   pdfDoc,
+  source, // { name, letter, colour } when several documents are merged
   sourcePage,
   rotation,
   label,
@@ -88,7 +89,10 @@ function PageThumbnail({
       aria-current={active ? 'page' : undefined}
       aria-pressed={selected}
       data-source-page={sourcePage}
-      aria-label={`Page ${label}${rotation ? `, rotated ${rotation}°` : ''}`}
+      aria-label={`Page ${label}${source ? `, from ${source.name}` : ''}${
+        rotation ? `, rotated ${rotation}°` : ''
+      }`}
+      title={source ? `${source.name}, page ${sourcePage}` : undefined}
       {...dragProps}
     >
       <span
@@ -97,6 +101,15 @@ function PageThumbnail({
         }`}
       >
         <canvas ref={canvasRef} className="sidebar__thumb-canvas" />
+        {source && (
+          <span
+            className="sidebar__thumb-source"
+            style={{ background: source.colour }}
+            aria-hidden="true"
+          >
+            {source.letter}
+          </span>
+        )}
       </span>
       <span className="sidebar__thumb-label">{label}</span>
     </button>

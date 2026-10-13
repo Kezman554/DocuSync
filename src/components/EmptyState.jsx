@@ -3,13 +3,13 @@ import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import './EmptyState.css';
 
 function EmptyState() {
-  const { openDocument } = useDocumentContext();
+  const { openDocuments } = useDocumentContext();
   const inputRef = useRef(null);
 
   const handleFileChange = (event) => {
-    const file = event.target.files?.[0];
-    if (file) openDocument(file);
+    const files = Array.from(event.target.files ?? []);
     event.target.value = '';
+    openDocuments(files); // several files open merged, in selection order
   };
 
   return (
@@ -32,6 +32,7 @@ function EmptyState() {
         ref={inputRef}
         type="file"
         accept="application/pdf,.pdf"
+        multiple
         className="empty-state__file-input"
         onChange={handleFileChange}
       />

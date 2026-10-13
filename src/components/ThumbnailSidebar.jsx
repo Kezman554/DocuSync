@@ -5,10 +5,14 @@ import './ThumbnailSidebar.css';
 
 const DRAG_TYPE = 'application/x-docusync-page';
 
+// Badge colours distinguishing source documents once more than one is loaded.
+const SOURCE_COLOURS = ['#3a82f6', '#e5a50a', '#2ec27e', '#e66100', '#c061cb', '#f66151'];
+
 function ThumbnailSidebar({ open }) {
   const {
     hasDocument,
-    pdfDoc,
+    sources,
+    sourcesById,
     pages,
     currentPage,
     selected,
@@ -80,6 +84,21 @@ function ThumbnailSidebar({ open }) {
 
   const dragging = dragIds ? new Set(dragIds) : null;
 
+  // Only label sources when merging — a single document needs no badge.
+  const sourceInfo =
+    sources.length > 1
+      ? Object.fromEntries(
+          sources.map((src, i) => [
+            src.id,
+            {
+              name: src.name,
+              letter: String.fromCharCode(65 + (i % 26)),
+              colour: SOURCE_COLOURS[i % SOURCE_COLOURS.length],
+            },
+          ])
+        )
+      : null;
+
   return (
     <aside
       className={`sidebar${open ? ' sidebar--open' : ''}`}
@@ -111,7 +130,8 @@ function ThumbnailSidebar({ open }) {
                   onDrop={handleDrop}
                 >
                   <PageThumbnail
-                    pdfDoc={pdfDoc}
+                    pdfDoc={sourcesById[entry.sourceId]?.pdfDoc}
+                    source={sourceInfo?.[entry.sourceId]}
                     sourcePage={entry.sourcePage}
                     rotation={entry.rotation}
                     label={index + 1}

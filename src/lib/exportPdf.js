@@ -19,52 +19,58 @@ export class ExportError extends Error {
 }
 
 /**
- * @param {ArrayBuffer|Uint8Array} sourceBytes  the original, unmodified file
- * @param {{ sourcePage: number, rotation: number }[]} pages  the page model
+ * @param {Record<string, { name: string, bytes: ArrayBuffer|Uint8Array }>} sources
+ *   original, unmodified files keyed by sourceId (only those `pages` use are read)
+ * @param {{ sourceId: string, sourcePage: number, rotation: number }[]} pages
+ *   the page model (or a slice of it), in output order
  * @returns {Promise<Uint8Array>} the new PDF's bytes
  */
-export async function buildPdf(sourceBytes, pages) {
+export async function buildPdf(sources, pages) {
   if (!pages.length) throw new ExportError('There are no pages to export.');
 
   const { PDFDocument, degrees } = await import('pdf-lib');
 
-  let source;
-  let available;
-  try {
-    source = await PDFDocument.load(sourceBytes, { updateMetadata: false });
-    // Lenient parsing can "succeed" on junk with no page tree; this throws then.
-    available = source.getPageCount();
-  } catch (err) {
-    if (/encrypted/i.test(err?.message ?? '')) {
-      throw new ExportError(
-        'This PDF is password-protected or encrypted, so it can’t be re-saved.',
-        { cause: err }
-      );
+  // Group output slots by source, in order of first appearance.
+  const slotsBySource = new Map();
+  pages.forEach((entry, slot) => {
+    if (!slotsBySource.has(entry.sourceId)) slotsBySource.set(entry.sourceId, []);
+    slotsBySource.get(entry.sourceId).push(slot);
+  });
+  const multiple = slotsBySource.size > 1;
+
+  const output = await PDFDocument.create();
+  const placed = new Array(pages.length);
+
+  for (const [sourceId, slots] of slotsBySource) {
+    const input = sources[sourceId];
+    const label = multiple && input?.name ? `“${input.name}”` : 'the original PDF';
+    if (!input) throw new ExportError(`Couldn’t find ${label} for export.`);
+
+    const source = await loadSource(PDFDocument, input.bytes, label);
+
+    // pdf-lib can disagree with pdf.js about a damaged file's page count —
+    // check every page we need actually exists.
+    const available = source.getPageCount();
+    if (slots.some((i) => pages[i].sourcePage < 1 || pages[i].sourcePage > available)) {
+      throw new ExportError(`Couldn’t read all pages of ${label} for export.`);
     }
-    throw new ExportError('Couldn’t read the original PDF for export.', {
-      cause: err,
+
+    // Metadata comes from whichever document supplies the first page.
+    if (placed.every((p) => p === undefined)) copyMetadata(source, output);
+
+    // copyPages also flattens inherited attributes (MediaBox, Resources,
+    // Rotate) onto each copied page, so pages stand alone in the new tree.
+    // One call per source lets pages share copied fonts/images.
+    const copied = await output.copyPages(
+      source,
+      slots.map((i) => pages[i].sourcePage - 1)
+    );
+    copied.forEach((page, k) => {
+      placed[slots[k]] = page;
     });
   }
 
-  // pdf-lib can disagree with pdf.js about a damaged file's page count —
-  // check every page we need actually exists.
-  if (pages.some((p) => p.sourcePage < 1 || p.sourcePage > available)) {
-    throw new ExportError(
-      'Couldn’t read all pages of the original PDF for export.'
-    );
-  }
-
-  const output = await PDFDocument.create();
-  copyMetadata(source, output);
-
-  // copyPages also flattens inherited attributes (MediaBox, Resources,
-  // Rotate) onto each copied page, so pages stand alone in the new tree.
-  const copied = await output.copyPages(
-    source,
-    pages.map((p) => p.sourcePage - 1)
-  );
-
-  copied.forEach((page, i) => {
+  placed.forEach((page, i) => {
     const intrinsic = page.getRotation().angle;
     page.setRotation(degrees(effectiveRotation(intrinsic, pages[i].rotation)));
     output.addPage(page);
@@ -72,6 +78,25 @@ export async function buildPdf(sourceBytes, pages) {
 
   return output.save();
 }
+
+async function loadSource(PDFDocument, bytes, label) {
+  try {
+    const doc = await PDFDocument.load(bytes, { updateMetadata: false });
+    // Lenient parsing can "succeed" on junk with no page tree; this throws then.
+    doc.getPageCount();
+    return doc;
+  } catch (err) {
+    if (/encrypted/i.test(err?.message ?? '')) {
+      throw new ExportError(
+        `${capitalise(label)} is password-protected or encrypted, so it can’t be re-saved.`,
+        { cause: err }
+      );
+    }
+    throw new ExportError(`Couldn’t read ${label} for export.`, { cause: err });
+  }
+}
+
+const capitalise = (text) => text.charAt(0).toUpperCase() + text.slice(1);
 
 function copyMetadata(source, output) {
   const title = source.getTitle();
@@ -99,8 +124,8 @@ export function extractFileName(name, positions) {
   return `${base}-${label}-${ranges}.pdf`;
 }
 
-/** "report.pdf" → "report-edited.pdf". */
-export function exportFileName(name) {
+/** "report.pdf" → "report-edited.pdf" (or "report-merged.pdf"). */
+export function exportFileName(name, { merged = false } = {}) {
   const base = (name || 'document').replace(/\.pdf$/i, '');
-  return `${base}-edited.pdf`;
+  return `${base}-${merged ? 'merged' : 'edited'}.pdf`;
 }

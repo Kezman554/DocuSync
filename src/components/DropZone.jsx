@@ -14,7 +14,7 @@ function isPdf(file) {
  * doesn't flicker as the cursor moves across child elements.
  */
 function DropZone({ children }) {
-  const { openDocument } = useDocumentContext();
+  const { hasDocument, openDocuments, addDocuments } = useDocumentContext();
   const [dragging, setDragging] = useState(false);
   const depthRef = useRef(0);
 
@@ -42,10 +42,14 @@ function DropZone({ children }) {
       e.preventDefault();
       depthRef.current = 0;
       setDragging(false);
-      const file = Array.from(e.dataTransfer?.files ?? []).find(isPdf);
-      if (file) openDocument(file);
+      const files = Array.from(e.dataTransfer?.files ?? []).filter(isPdf);
+      if (files.length === 0) return;
+      // With a document open, dropped PDFs are merged in (appended);
+      // otherwise they're opened (several at once = merged in drop order).
+      if (hasDocument) addDocuments(files);
+      else openDocuments(files);
     },
-    [openDocument]
+    [hasDocument, addDocuments, openDocuments]
   );
 
   return (
@@ -59,7 +63,9 @@ function DropZone({ children }) {
       {children}
       {dragging && (
         <div className="dropzone__overlay" aria-hidden="true">
-          <div className="dropzone__hint">Drop PDF to open</div>
+          <div className="dropzone__hint">
+            {hasDocument ? 'Drop PDFs to add their pages' : 'Drop PDF to open'}
+          </div>
         </div>
       )}
     </div>

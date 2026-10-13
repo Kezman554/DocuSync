@@ -5,8 +5,8 @@ import { PDFDocument } from 'pdf-lib';
 import { openPdf, setupDom, thumb } from './helpers/fakePdf.jsx';
 
 vi.mock('../src/lib/pdfLoader.js', async () => {
-  const { fakePdf: pdf } = await import('./helpers/fakePdf.jsx');
-  return { loadPdfDocument: vi.fn(async () => pdf) };
+  const { pdfFor } = await import('./helpers/fakePdf.jsx');
+  return { loadPdfDocument: vi.fn(async (file) => pdfFor(file)) };
 });
 
 // Capture the exported bytes instead of triggering a browser download.

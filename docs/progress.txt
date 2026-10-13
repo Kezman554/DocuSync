@@ -133,3 +133,27 @@ DocuSync — Progress Log
 - Tests: 68 passing (+pageRanges unit; real pdf-lib/pdf.js extract tests
   confirm exactly the chosen pages with text intact, document order, edits
   kept; UI tests for selection prefill, typed list + Enter, invalid range).
+
+2026-10-13 — Merge
+- Page model entries now carry sourceId; ids are "<sourceId>-<n>" (unique
+  across documents). One flat model => reorder/rotate/delete/extract work
+  across documents unchanged.
+- DocumentContext: `sources` [{ id, name, size, numPages, pdfDoc, file }]
+  replaces single pdfDoc/file; `document` = primary (first) source.
+  openDocuments(files) opens one or more (several = merged in order);
+  addDocuments(files) appends pages, selects them, shows the first. Partial
+  failures reported via `notice` (renamed from exportError); close destroys
+  every pdf.js proxy. Stale-token guards on open/add/export.
+- buildPdf(sources, pages): sources keyed by id ({ name, bytes }); loads each
+  used source once, one copyPages per source (shared resources), assembles in
+  model order; metadata from the first page's source; errors name the file
+  when merging. Export name "<primary>-merged.pdf" when >1 source is used.
+- UI: toolbar "Add PDF…" (multi-select), filename shows "+ N more"; Open and
+  empty-state accept multiple files; dropping PDFs on an open document now
+  ADDS them (was: replace) — overlay text says so. Thumbnails get a coloured
+  source letter badge + "from <file>" in the accessible name when merged.
+- Tests: 80 passing. Real pdf-lib/pdf.js merge tests (append, interleave
+  with rotate/delete, text extracted in order, metadata, unused source not
+  read, failing file named). merge.test.jsx: add + selection + labels,
+  cross-document drag then export order/rotation, -edited vs -merged naming,
+  drop-to-add, load failure notice, close releases all docs.

@@ -6,8 +6,10 @@ import PageControls from './PageControls.jsx';
 import './Viewer.css';
 
 function Viewer() {
-  const { hasDocument, status, error, pdfDoc, currentPage, currentEntry, scale } =
+  const { hasDocument, status, error, sourcesById, currentPage, currentEntry, scale } =
     useDocumentContext();
+  // The current page may come from any of the merged source documents.
+  const pdfDoc = sourcesById[currentEntry?.sourceId]?.pdfDoc ?? null;
   const canvasRef = useRef(null);
   const sourcePage = currentEntry?.sourcePage;
   const rotation = currentEntry?.rotation ?? 0;
