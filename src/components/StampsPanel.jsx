@@ -5,6 +5,7 @@ import { INITIALS_PRESETS, normalizeInitials } from '../lib/stamps.js';
 import { STANDARD_FONTS, textLayout } from '../lib/textLayout.js';
 import { measureTextWidth } from '../lib/measureText.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
+import SignatureDialog from './SignatureDialog.jsx';
 import './StampsPanel.css';
 
 /** Small preview of a stamp's look: vector text via the shared layout, or the image. */
@@ -208,10 +209,19 @@ function InitialsForm() {
  */
 function StampsPanel({ open, onClose }) {
   const { hasDocument } = useDocumentContext();
-  const { stamps, status, persistent, error, dismissError, addImageStamp, deleteStamp } =
-    useStamps();
+  const {
+    stamps,
+    status,
+    persistent,
+    error,
+    dismissError,
+    addImageStamp,
+    addSignature,
+    deleteStamp,
+  } = useStamps();
   const fileRef = useRef(null);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [drawing, setDrawing] = useState(false);
 
   if (!open) return null;
 
@@ -272,7 +282,14 @@ function StampsPanel({ open, onClose }) {
               )}
               {kind === 'initials' && <InitialsForm />}
               {kind === 'signature' && (
-                <>
+                <div className="stamps-panel__actions">
+                  <button
+                    type="button"
+                    className="stamps-panel__btn"
+                    onClick={() => setDrawing(true)}
+                  >
+                    Draw signature…
+                  </button>
                   <button
                     type="button"
                     className="stamps-panel__btn stamps-panel__btn--ghost"
@@ -292,12 +309,22 @@ function StampsPanel({ open, onClose }) {
                       if (file) addImageStamp(file);
                     }}
                   />
-                </>
+                </div>
               )}
             </section>
           );
         })}
       </div>
+
+      {drawing && (
+        <SignatureDialog
+          onSave={async (bytes, name) => {
+            await addSignature(bytes, name);
+            setDrawing(false);
+          }}
+          onCancel={() => setDrawing(false)}
+        />
+      )}
 
       {pendingDelete && (
         <ConfirmDialog

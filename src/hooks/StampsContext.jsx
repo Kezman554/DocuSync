@@ -112,6 +112,12 @@ export function StampsProvider({ children }) {
     [persist]
   );
 
+  /** Save PNG bytes (e.g. a drawn signature) as an image stamp. */
+  const addSignature = useCallback(
+    (bytes, name) => persist(createImageStamp(bytes, { name, kind: 'signature' })),
+    [persist]
+  );
+
   /** Save a PNG/JPG file as an image stamp (e.g. a signature). */
   const addImageStamp = useCallback(
     async (file, { kind = 'signature' } = {}) => {
@@ -186,6 +192,7 @@ export function StampsProvider({ children }) {
       selectStamp,
       addInitials,
       addImageStamp,
+      addSignature,
       renameStamp,
       deleteStamp,
       dismissError: () => setError(null),
@@ -201,6 +208,7 @@ export function StampsProvider({ children }) {
       selectStamp,
       addInitials,
       addImageStamp,
+      addSignature,
       renameStamp,
       deleteStamp,
     ]

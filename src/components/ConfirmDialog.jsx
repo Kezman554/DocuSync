@@ -19,6 +19,7 @@ function ConfirmDialog({
   destructive = false,
   role = 'alertdialog',
   focusCancel = true,
+  className = '',
   onConfirm,
   onCancel,
 }) {
@@ -57,7 +58,7 @@ function ConfirmDialog({
     >
       <div
         ref={dialogRef}
-        className="confirm-dialog"
+        className={`confirm-dialog${className ? ` ${className}` : ''}`}
         role={role}
         aria-modal="true"
         aria-labelledby={titleId}

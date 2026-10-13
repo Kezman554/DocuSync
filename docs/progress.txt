@@ -297,3 +297,29 @@ DocuSync — Progress Log
   position, initials/image stamp placement, no-IndexedDB fallback). Mutation
   check: ignoring stored stamps on load fails all 4 reload tests (this check
   exposed a weak assertion and the cross-realm bug above).
+
+2026-10-13 — Draw-a-signature
+- src/lib/signature.js (pure): strokeBounds(toData) -> CSS-px crop box grown
+  by pen width + 8px padding, clipped to the pad (null if empty); hasInk;
+  pngHasAlpha (IHDR colour type 4/6 or tRNS chunk, header only); PEN_COLOURS.
+- src/lib/signatureExport.js (browser): crop the transparent signature_pad
+  canvas at its backing resolution into a new canvas, encode with toBlob
+  ('image/png'), refuse if the PNG has no alpha.
+- SignatureDialog (Stamps panel > Signatures > "Draw signature…"): real
+  signature_pad (pointer events: mouse/finger/stylus; touch-action none),
+  rendered at >=2x for crisp output, keeps strokes across window resize;
+  Black/Blue pen, Undo, Clear, Name, Save (disabled until drawn). Guide line
+  and "Sign here" are outside the canvas so not exported. Saves via
+  StampsContext.addSignature -> image stamp (kind signature) in IndexedDB.
+  ConfirmDialog gained a className prop (wide variant).
+- Verified in a real browser: harness bundled with esbuild, run once in
+  headless Edge via CDP (no dev server): PNG colour type 6 (RGBA), cropped
+  524x162, all corners alpha 0, ink pixels exactly the pen colour.
+- jsdom can't rasterise and node-canvas 3 conflicts with jsdom 25's peer
+  range (canvas 2 needs a native build on Windows) — not installed.
+  Tests stand in for getContext (recording proxy) and toBlob (fixture RGBA
+  PNG); signature_pad, crop maths, alpha guard, model and IndexedDB are real.
+- Tests: 208 passing (+6 pure, +5 dialog: draw -> save -> listed -> stored
+  PNG with alpha -> survives reload; exact crop rect from captured strokes;
+  undo/clear; pen colour; opaque PNG refused; cancel). Mutation check:
+  removing the alpha guard fails its test.

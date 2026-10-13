@@ -334,6 +334,16 @@
   background: #34363b;
 }
 
+.stamps-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.stamps-panel__actions .stamps-panel__btn {
+  margin-left: 0;
+}
+
 .stamps-panel__file {
   display: none;
 }

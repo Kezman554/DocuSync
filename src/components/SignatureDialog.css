@@ -1,0 +1,115 @@
+.confirm-dialog--wide {
+  max-width: 640px;
+}
+
+.signature-pad {
+  margin: -0.5rem 0 1rem;
+}
+
+/* White "paper" so the signer sees ink as it will print; the canvas itself
+   stays transparent, so the exported PNG has no background. */
+.signature-pad__surface {
+  position: relative;
+  border: 1px solid #4a4d54;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.signature-pad__canvas {
+  display: block;
+  width: 100%;
+  height: 200px;
+  /* Let pen/finger strokes draw instead of scrolling or zooming the page. */
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.signature-pad__line {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 48px;
+  border-bottom: 1.5px dashed #b9bec7;
+  pointer-events: none;
+}
+
+.signature-pad__prompt {
+  position: absolute;
+  left: 6%;
+  bottom: 54px;
+  font-size: 0.85rem;
+  color: #9aa0a6;
+  pointer-events: none;
+}
+
+.signature-pad__hint {
+  margin: 0.35rem 0 0.75rem;
+  font-size: 0.75rem;
+  color: #9aa0a6;
+}
+
+.signature-pad__tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.signature-pad__pens {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 auto 0 0;
+  padding: 0;
+  border: none;
+}
+
+.signature-pad__legend {
+  float: left;
+  margin-right: 0.35rem;
+  font-size: 0.8rem;
+  color: #b4b8be;
+}
+
+.signature-pad__pen {
+  position: relative;
+  display: inline-flex;
+  padding: 3px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.signature-pad__pen input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.signature-pad__pen--on {
+  border-color: #3a82f6;
+}
+
+.signature-pad__pen:focus-within {
+  outline: 2px solid #8ab4ff;
+  outline-offset: 1px;
+}
+
+.signature-pad__swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* Name field (shared confirm-dialog styles), full width here. */
+.signature-pad .confirm-dialog__label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.signature-pad .confirm-dialog__input {
+  box-sizing: border-box;
+  width: 100%;
+}
