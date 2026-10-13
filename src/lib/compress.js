@@ -45,6 +45,18 @@ export const COMPRESSION_PRESETS = {
 
 export const DEFAULT_PRESET = 'balanced';
 
+/** Why an image was left unchanged, keyed by the reason codes in `skipped`. */
+export const SKIP_REASONS = {
+  bilevel: 'black-and-white scan data, already compact',
+  cmyk: 'CMYK print colour, which browsers can’t re-encode faithfully',
+  jpx: 'JPEG 2000, which browsers can’t decode',
+  colour: 'an unsupported colour format (e.g. palette or 16-bit)',
+  mask: 'masks or special transparency',
+  small: 'too small to be worth it',
+  unreadable: 'couldn’t be decoded',
+  nogain: 'already well compressed at this quality',
+};
+
 /** Image streams smaller than this aren't worth re-encoding (icons, rules). */
 export const MIN_IMAGE_BYTES = 2048;
 
@@ -58,8 +70,11 @@ export const MIN_IMAGE_BYTES = 2048;
  *   decodes the input (JPEG bytes or RGBA pixels), scales it to fit `maxSide`
  *   and returns baseline JPEG bytes; null to leave the image unchanged
  * @param {(done: number, total: number) => void} [onProgress] per image
- * @returns {Promise<{ bytes: Uint8Array, before: number, after: number,
- *   images: number, reencoded: number, removedObjects: number }>}
+ * @returns {Promise<{ bytes: Uint8Array, before: number, after: number, composition: object,
+ *   images: number, reencoded: number, skipped: Record<SkipReason, number>,
+ *   removedObjects: number }>}
+ *   `skipped` counts images left unchanged, by reason (see SKIP_REASONS);
+ *   `composition` is { images, fonts, other } bytes in the input
  */
 export async function compressPdf(bytes, options, encodeImage, onProgress) {
   const pdfLib = await import('pdf-lib');
@@ -69,11 +84,15 @@ export async function compressPdf(bytes, options, encodeImage, onProgress) {
   const { context } = doc;
 
   const candidates = imageStreams(context, pdfLib);
+  const composition = measureComposition(context, input.length, pdfLib);
   let reencoded = 0;
+  const skipped = {};
   for (const [index, { ref, stream }] of candidates.entries()) {
-    const replacement = await reencodeImage(stream, options, encodeImage, context, pdfLib);
-    if (replacement) {
-      context.assign(ref, replacement);
+    const outcome = await reencodeImage(stream, options, encodeImage, context, pdfLib);
+    if (typeof outcome === 'string') {
+      skipped[outcome] = (skipped[outcome] ?? 0) + 1;
+    } else {
+      context.assign(ref, outcome);
       reencoded += 1;
     }
     onProgress?.(index + 1, candidates.length);
@@ -89,8 +108,35 @@ export async function compressPdf(bytes, options, encodeImage, onProgress) {
     after: out.length,
     images: candidates.length,
     reencoded,
+    skipped,
+    composition,
     removedObjects,
   };
+}
+
+/**
+ * Roughly where the input's bytes go — stored (compressed) image and font
+ * stream sizes, and everything else — to explain a small saving.
+ */
+function measureComposition(context, total, { PDFName, PDFDict, PDFRawStream }) {
+  const fontFiles = ['FontFile', 'FontFile2', 'FontFile3'].map((k) => PDFName.of(k));
+  const fontRefs = new Set();
+  let images = 0;
+  for (const [, object] of context.enumerateIndirectObjects()) {
+    if (object instanceof PDFRawStream && object.dict.get(PDFName.of('Subtype')) === PDFName.of('Image')) {
+      images += object.contents.length;
+    } else if (object instanceof PDFDict && object.get(PDFName.of('Type')) === PDFName.of('FontDescriptor')) {
+      for (const key of fontFiles) {
+        const ref = object.get(key);
+        if (ref) fontRefs.add(ref.toString());
+      }
+    }
+  }
+  let fonts = 0;
+  for (const [ref, object] of context.enumerateIndirectObjects()) {
+    if (fontRefs.has(ref.toString()) && object instanceof PDFRawStream) fonts += object.contents.length;
+  }
+  return { images, fonts, other: Math.max(0, total - images - fonts) };
 }
 
 /** Every indirect image XObject stream that isn't itself a soft mask. */
@@ -109,65 +155,78 @@ function imageStreams(context, { PDFName, PDFRawStream, PDFRef }) {
 
 /**
  * Decide whether `stream` can be re-encoded and, if so, return a new JPEG
- * image stream to replace it (or null to keep the original).
+ * image stream to replace it, or a SKIP_REASONS key to keep the original.
  */
 async function reencodeImage(stream, { quality, maxSide }, encodeImage, context, pdfLib) {
   const { PDFName, PDFNumber, PDFArray, PDFDict, PDFRawStream, decodePDFRawStream } = pdfLib;
   const { dict, contents } = stream;
-  if (contents.length < MIN_IMAGE_BYTES) return null;
-
   const get = (key) => dict.lookup(PDFName.of(key));
   const width = numberValue(get('Width'), PDFNumber);
   const height = numberValue(get('Height'), PDFNumber);
-  if (!width || !height) return null;
-  if (get('ImageMask')?.toString() === 'true') return null;
-  if (get('Mask') instanceof PDFArray) return null; // colour-key masking needs exact colours
-  if (get('Decode') !== undefined) return null;
-  const smask = get('SMask');
-  if (smask instanceof PDFRawStream && smask.dict.has(PDFName.of('Matte'))) return null;
-
-  const components = colourComponents(get('ColorSpace'), pdfLib);
-  if (components !== 1 && components !== 3) return null;
-
   const filters = filterNames(get('Filter'), PDFName, PDFArray);
-  if (!filters) return null;
+  if (!width || !height || !filters) return 'unreadable';
+
+  const bpc = numberValue(get('BitsPerComponent'), PDFNumber);
+  if (
+    get('ImageMask')?.toString() === 'true' ||
+    bpc === 1 ||
+    filters.some((f) => f === 'CCITTFaxDecode' || f === 'JBIG2Decode')
+  ) {
+    return 'bilevel';
+  }
+  if (filters.includes('JPXDecode')) return 'jpx';
+  const components = colourComponents(get('ColorSpace'), pdfLib);
+  if (components === 4) return 'cmyk';
+  if (components !== 1 && components !== 3) return 'colour';
+  // Colour-key masks need exact colours; Decode arrays and Matte change
+  // how samples map to colour.
+  const smask = get('SMask');
+  if (
+    get('Mask') instanceof PDFArray ||
+    get('Decode') !== undefined ||
+    (smask instanceof PDFRawStream && smask.dict.has(PDFName.of('Matte')))
+  ) {
+    return 'mask';
+  }
+  if (contents.length < MIN_IMAGE_BYTES) return 'small';
 
   let encoded;
   if (filters.length === 1 && filters[0] === 'DCTDecode') {
     // Baseline/progressive JPEG: the browser decodes the stream as-is.
     // Skip unusual colour transforms the browser might apply differently.
-    if (get('DecodeParms') !== undefined) return null;
+    if (get('DecodeParms') !== undefined) return 'unreadable';
     encoded = await encodeImage(
       { type: 'jpeg', bytes: stripJpegMetadata(contents), width, height },
       { quality, maxSide }
     );
   } else {
-    if (filters.some((f) => !RAW_FILTERS.has(f))) return null;
-    if (numberValue(get('BitsPerComponent'), PDFNumber) !== 8) return null;
+    if (filters.some((f) => !RAW_FILTERS.has(f))) return 'unreadable';
+    if (bpc !== 8) return 'colour';
     let raw;
     try {
       raw = filters.length ? decodePDFRawStream(stream).decode() : contents;
     } catch {
-      return null;
+      return 'unreadable';
     }
     const parms = lastDecodeParms(get('DecodeParms'), PDFArray, PDFDict);
     const predictor = parms ? numberValue(parms.lookup(PDFName.of('Predictor')), PDFNumber) ?? 1 : 1;
     if (predictor > 1) {
       const colors = numberValue(parms.lookup(PDFName.of('Colors')), PDFNumber) ?? 1;
       const columns = numberValue(parms.lookup(PDFName.of('Columns')), PDFNumber) ?? 1;
-      const bpc = numberValue(parms.lookup(PDFName.of('BitsPerComponent')), PDFNumber) ?? 8;
-      if (colors !== components || columns !== width || bpc !== 8) return null;
+      const pbpc = numberValue(parms.lookup(PDFName.of('BitsPerComponent')), PDFNumber) ?? 8;
+      if (colors !== components || columns !== width || pbpc !== 8) return 'unreadable';
       raw = unpredict(raw, { predictor, colors, columns, rows: height });
-      if (!raw) return null;
+      if (!raw) return 'unreadable';
     }
-    if (raw.length < width * height * components) return null;
+    if (raw.length < width * height * components) return 'unreadable';
     encoded = await encodeImage(
       { type: 'pixels', data: toRgba(raw, width, height, components), width, height },
       { quality, maxSide }
     );
   }
 
-  if (!encoded || encoded.bytes.length >= contents.length) return null;
+  if (!encoded) return 'unreadable';
+  if (encoded.bytes.length >= contents.length) return 'nogain';
 
   const next = dict.clone(context);
   next.set(PDFName.of('Width'), PDFNumber.of(encoded.width));
@@ -208,14 +267,16 @@ function lastDecodeParms(parms, PDFArray, PDFDict) {
 }
 
 /**
- * Number of colour components for the colour spaces we can re-encode
- * (DeviceGray/RGB, CalGray/RGB, ICCBased with N 1 or 3); 0 otherwise.
+ * Number of colour components: 1 or 3 for the colour spaces we can
+ * re-encode (DeviceGray/RGB, CalGray/RGB, ICCBased N 1|3), 4 for CMYK
+ * (Device or ICC), 0 for anything else.
  */
 function colourComponents(space, { PDFName, PDFArray, PDFRawStream, PDFNumber }) {
   if (space instanceof PDFName) {
     const name = space.decodeText();
     if (name === 'DeviceGray' || name === 'G') return 1;
     if (name === 'DeviceRGB' || name === 'RGB') return 3;
+    if (name === 'DeviceCMYK' || name === 'CMYK') return 4;
     return 0;
   }
   if (space instanceof PDFArray && space.size() >= 1) {
@@ -391,6 +452,30 @@ export function pruneUnreachable(context, { PDFRef, PDFDict, PDFArray, PDFStream
     }
   }
   return removed;
+}
+
+/**
+ * Plain-language notes on a compressPdf report: which images were left
+ * alone and why, and — when images aren't the bulk of the file — what is.
+ */
+export function explainResult({ before, images, reencoded, skipped = {}, composition }) {
+  const plural = (n) => `${n} image${n === 1 ? '' : 's'}`;
+  const notes = [];
+  if (images === 0) notes.push('There are no photos or scanned images to re-encode.');
+  else notes.push(`${reencoded} of ${plural(images)} re-encoded.`);
+  for (const [reason, count] of Object.entries(skipped)) {
+    if (count) notes.push(`Left unchanged — ${plural(count)}: ${SKIP_REASONS[reason] ?? reason}.`);
+  }
+  if (composition && before) {
+    if (composition.fonts / before >= 0.4) {
+      notes.push(
+        `Most of this file (${formatBytes(composition.fonts)}) is embedded fonts, which compression leaves untouched.`
+      );
+    } else if (composition.images / before < 0.25 && composition.other / before >= 0.5) {
+      notes.push('Most of this file is text and page content, which is already stored compressed.');
+    }
+  }
+  return notes;
 }
 
 /** 1536 → "1.5 KB", 2500000 → "2.4 MB". */

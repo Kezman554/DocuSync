@@ -522,3 +522,14 @@ DocuSync — Progress Log
   keep-if-not-smaller, shared once, 8 skip cases, progress, text survives
   in pdf.js, metadata strip on/off, orphan pruning, unpredict all PNG
   types + TIFF, EXIF strip, formatting; +3 UI with the encoder mocked).
+
+2026-10-13 — Compression: review before download
+- User feedback: a 1.4 MB file got "already compact" and still downloaded
+  an identical copy. Now Compress runs first; the dialog shows Before /
+  After / Saved and offers "Download (size)" only if the file got smaller,
+  plus "Try a different setting". Nothing downloads otherwise.
+- compressPdf now returns `skipped` (per reason: bilevel/CCITT/JBIG2, CMYK,
+  JPEG 2000, palette/16-bit, masks, small, unreadable, no gain) and
+  `composition` (image/font/other bytes). explainResult() turns these into
+  notes, e.g. "Most of this file (1.0 MB) is embedded fonts…".
+- Tests: 332 passing.

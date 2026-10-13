@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -74,30 +74,20 @@ describe('compress dialog', () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
-  it('compresses with the chosen preset, downloads, and reports before/after', async () => {
+  it('compresses with the chosen preset, reports before/after, and downloads on request', async () => {
     const user = userEvent.setup();
     await openPdf(App, user, await scannedPdf());
     const dialog = await openCompress(user);
     expect(within(dialog).getByRole('radio', { name: /Balanced/ })).toBeChecked();
     expect(within(dialog).getByRole('checkbox', { name: /Remove metadata/ })).toBeChecked();
     await user.click(within(dialog).getByRole('radio', { name: /Strong/ }));
-    await user.click(within(dialog).getByRole('button', { name: 'Compress & download' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Compress' }));
 
-    const done = await screen.findByRole('dialog', { name: 'Compressed copy downloaded' });
+    const done = await screen.findByRole('dialog', { name: 'Compression ready' });
     expect(encodeImageAsJpeg).toHaveBeenCalledTimes(4);
     expect(encodeImageAsJpeg.mock.calls[0][1]).toEqual({ quality: 0.5, maxSide: 1400 });
-
-    expect(downloadBytes).toHaveBeenCalledTimes(1);
-    const [bytes, fileName] = downloadBytes.mock.calls[0];
-    expect(fileName).toBe('scan-compressed.pdf');
-    const out = await PDFDocument.load(bytes, { updateMetadata: false });
-    expect(out.getPageCount()).toBe(4);
-    expect(out.context.trailerInfo.Info).toBeUndefined();
-    const filters = out.context
-      .enumerateIndirectObjects()
-      .map(([, o]) => o.dict?.get(PDFName.of('Filter'))?.toString())
-      .filter((f) => f === '/DCTDecode');
-    expect(filters).toHaveLength(4);
+    // Nothing is saved until asked.
+    expect(downloadBytes).not.toHaveBeenCalled();
 
     const values = within(done).getAllByRole('definition').map((d) => d.textContent);
     // Before ≈ 4 × 720 KB of noise; after ≈ 4 × 3.7 KB of JPEG.
@@ -106,8 +96,35 @@ describe('compress dialog', () => {
     expect(values[2]).toBe('99%');
     expect(within(done).getByText('4 of 4 images re-encoded.')).toBeInTheDocument();
 
-    await user.click(within(done).getByRole('button', { name: 'Done' }));
+    await user.click(within(done).getByRole('button', { name: `Download (${values[1]})` }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(downloadBytes).toHaveBeenCalledTimes(1);
+    const [bytes, fileName] = downloadBytes.mock.calls[0];
+    expect(fileName).toBe('scan-compressed.pdf');
+    const out = await PDFDocument.load(bytes, { updateMetadata: false });
+    expect(out.getPageCount()).toBe(4);
+    expect(out.context.trailerInfo.Info).toBeUndefined();
+    const jpegs = out.context
+      .enumerateIndirectObjects()
+      .filter(([, o]) => o.dict?.get(PDFName.of('Filter'))?.toString() === '/DCTDecode');
+    expect(jpegs).toHaveLength(4);
+  });
+
+  it('closes without downloading, or goes back to try another setting', async () => {
+    const user = userEvent.setup();
+    await openPdf(App, user, await scannedPdf());
+    let dialog = await openCompress(user);
+    await user.click(within(dialog).getByRole('button', { name: 'Compress' }));
+    let done = await screen.findByRole('dialog', { name: 'Compression ready' });
+    await user.click(within(done).getByRole('button', { name: 'Try a different setting' }));
+    dialog = screen.getByRole('dialog', { name: 'Compress PDF' });
+    await user.click(within(dialog).getByRole('radio', { name: /Light/ }));
+    await user.click(within(dialog).getByRole('button', { name: 'Compress' }));
+    done = await screen.findByRole('dialog', { name: 'Compression ready' });
+    expect(encodeImageAsJpeg.mock.calls.at(-1)[1]).toEqual({ quality: 0.85, maxSide: 3000 });
+    await user.click(within(done).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(downloadBytes).not.toHaveBeenCalled();
   });
 
   it('keeps metadata when unticked', async () => {
@@ -115,25 +132,28 @@ describe('compress dialog', () => {
     await openPdf(App, user, await scannedPdf());
     const dialog = await openCompress(user);
     await user.click(within(dialog).getByRole('checkbox', { name: /Remove metadata/ }));
-    await user.click(within(dialog).getByRole('button', { name: 'Compress & download' }));
-    await screen.findByRole('dialog', { name: 'Compressed copy downloaded' });
+    await user.click(within(dialog).getByRole('button', { name: 'Compress' }));
+    const done = await screen.findByRole('dialog', { name: 'Compression ready' });
+    await user.click(within(done).getByRole('button', { name: /^Download/ }));
     const out = await PDFDocument.load(downloadBytes.mock.calls[0][0], { updateMetadata: false });
     expect(out.getTitle()).toBe('Scan');
   });
 
-  it('saves the plain export when compression can’t help', async () => {
-    encodeImageAsJpeg.mockResolvedValue(null); // e.g. the browser can't decode
+  it('downloads nothing when compression can’t help, and explains why', async () => {
+    encodeImageAsJpeg.mockResolvedValue({ bytes: new Uint8Array(800000), width: 600, height: 400 });
     const user = userEvent.setup();
     await openPdf(App, user, await scannedPdf());
     const dialog = await openCompress(user);
     await user.click(within(dialog).getByRole('checkbox', { name: /Remove metadata/ }));
-    await user.click(within(dialog).getByRole('button', { name: 'Compress & download' }));
-    const done = await screen.findByRole('dialog', { name: 'Compressed copy downloaded' });
-    expect(within(done).getByText(/already compact/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Compress' }));
+    const done = await screen.findByRole('dialog', { name: 'Couldn’t make this PDF smaller' });
+    expect(within(done).getByText(/Nothing has been downloaded/)).toBeInTheDocument();
     expect(within(done).getByText('0 of 4 images re-encoded.')).toBeInTheDocument();
-    const values = within(done).getAllByRole('definition').map((d) => d.textContent);
-    expect(values[0]).toBe(values[1]);
-    expect(values[2]).toBe('—');
-    await waitFor(() => expect(downloadBytes).toHaveBeenCalledTimes(1));
+    expect(
+      within(done).getByText('Left unchanged — 4 images: already well compressed at this quality.')
+    ).toBeInTheDocument();
+    expect(within(done).queryByRole('button', { name: /^Download/ })).not.toBeInTheDocument();
+    await user.click(within(done).getByRole('button', { name: 'Close' }));
+    expect(downloadBytes).not.toHaveBeenCalled();
   });
 });

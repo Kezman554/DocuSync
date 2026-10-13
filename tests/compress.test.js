@@ -14,6 +14,7 @@ import {
 import {
   COMPRESSION_PRESETS,
   MIN_IMAGE_BYTES,
+  explainResult,
   compressPdf,
   compressedFileName,
   formatBytes,
@@ -209,21 +210,48 @@ describe('compressPdf: image re-encoding', () => {
   });
 
   it.each([
-    ['CMYK', { ColorSpace: 'DeviceCMYK', data: noise(100, 100, 4) }],
-    ['Indexed', { ColorSpace: ['Indexed', 'DeviceRGB', 1, '<000000FFFFFF>'], data: noise(100, 100, 1) }],
-    ['16-bit', { BitsPerComponent: 16, data: noise(100, 100, 6) }],
-    ['a custom Decode array', { Decode: [1, 0, 1, 0, 1, 0], data: noise(100, 100, 3) }],
-    ['a colour-key mask', { Mask: [0, 10, 0, 10, 0, 10], data: noise(100, 100, 3) }],
-    ['a stencil mask', { ImageMask: true, ColorSpace: undefined, BitsPerComponent: 1, data: noise(100, 100, 1) }],
-    ['JPEG 2000', { filter: 'JPXDecode', data: noise(100, 100, 3) }],
-    ['a tiny image', { data: new Uint8Array(30 * 3).fill(200), width: 30, height: 1 }],
-  ])('leaves %s alone', async (_, image) => {
+    ['CMYK', 'cmyk', { ColorSpace: 'DeviceCMYK', data: noise(100, 100, 4) }],
+    ['Indexed', 'colour', { ColorSpace: ['Indexed', 'DeviceRGB', 1, '<000000FFFFFF>'], data: noise(100, 100, 1) }],
+    ['16-bit', 'colour', { BitsPerComponent: 16, data: noise(100, 100, 6) }],
+    ['a custom Decode array', 'mask', { Decode: [1, 0, 1, 0, 1, 0], data: noise(100, 100, 3) }],
+    ['a colour-key mask', 'mask', { Mask: [0, 10, 0, 10, 0, 10], data: noise(100, 100, 3) }],
+    ['a stencil mask', 'bilevel', { ImageMask: true, ColorSpace: undefined, BitsPerComponent: 1, data: noise(100, 100, 1) }],
+    ['a 1-bit scan', 'bilevel', { ColorSpace: 'DeviceGray', BitsPerComponent: 1, data: noise(13, 100, 1) }],
+    ['a CCITT fax scan', 'bilevel', { filter: 'CCITTFaxDecode', ColorSpace: 'DeviceGray', BitsPerComponent: 1, data: noise(13, 100, 1) }],
+    ['JPEG 2000', 'jpx', { filter: 'JPXDecode', data: noise(100, 100, 3) }],
+    ['a tiny image', 'small', { data: new Uint8Array(30 * 3).fill(200), width: 30, height: 1 }],
+  ])('leaves %s alone and says why', async (_, reason, image) => {
     const doc = await PDFDocument.create();
     addImage(doc, doc.addPage(), { width: 100, height: 100, ...image });
     const encode = fakeEncoder();
     const result = await compressPdf(await doc.save(), OPTIONS, encode);
     expect(encode).not.toHaveBeenCalled();
     expect(result.reencoded).toBe(0);
+    expect(result.skipped).toEqual({ [reason]: 1 });
+  });
+
+  it('counts images the encoder couldn’t shrink or decode', async () => {
+    const doc = await PDFDocument.create();
+    doc.addPage().drawImage(await doc.embedJpg(PHOTO), { x: 0, y: 0 });
+    addImage(doc, doc.addPage(), { data: noise(300, 300, 3), width: 300, height: 300 });
+    const encode = vi
+      .fn()
+      .mockResolvedValueOnce({ bytes: new Uint8Array(PHOTO.length + 1), width: 400, height: 300 })
+      .mockResolvedValueOnce(null);
+    const result = await compressPdf(await doc.save(), OPTIONS, encode);
+    expect(result.skipped).toEqual({ nogain: 1, unreadable: 1 });
+  });
+
+  it('measures how much of the file is images and fonts', async () => {
+    const doc = await PDFDocument.create();
+    addImage(doc, doc.addPage(), { data: noise(200, 200, 3), width: 200, height: 200 });
+    const fontFile = doc.context.register(doc.context.stream(new Uint8Array(20000).fill(1), {}));
+    doc.context.register(doc.context.obj({ Type: 'FontDescriptor', FontName: 'X', FontFile2: fontFile }));
+    const bytes = await doc.save({ useObjectStreams: false });
+    const { composition, before } = await compressPdf(bytes, OPTIONS, fakeEncoder());
+    expect(composition.images).toBeGreaterThan(110000);
+    expect(composition.fonts).toBe(20000);
+    expect(composition.images + composition.fonts + composition.other).toBe(before);
   });
 
   it('reports progress per candidate image', async () => {
@@ -345,6 +373,34 @@ describe('helpers', () => {
     expect(stripJpegMetadata(stripped)).toBe(stripped);
     const junk = Uint8Array.of(1, 2, 3);
     expect(stripJpegMetadata(junk)).toBe(junk);
+  });
+
+  it('explains a result in plain language', () => {
+    expect(
+      explainResult({
+        before: 1_000_000, images: 5, reencoded: 2, skipped: { cmyk: 2, small: 1 },
+        composition: { images: 600_000, fonts: 100_000, other: 300_000 },
+      })
+    ).toEqual([
+      '2 of 5 images re-encoded.',
+      'Left unchanged — 2 images: CMYK print colour, which browsers can’t re-encode faithfully.',
+      'Left unchanged — 1 image: too small to be worth it.',
+    ]);
+    expect(
+      explainResult({
+        before: 1_500_000, images: 0, reencoded: 0, skipped: {},
+        composition: { images: 0, fonts: 1_100_000, other: 400_000 },
+      })
+    ).toEqual([
+      'There are no photos or scanned images to re-encode.',
+      'Most of this file (1.0 MB) is embedded fonts, which compression leaves untouched.',
+    ]);
+    expect(
+      explainResult({
+        before: 1_000_000, images: 0, reencoded: 0,
+        composition: { images: 0, fonts: 100_000, other: 900_000 },
+      })
+    ).toContain('Most of this file is text and page content, which is already stored compressed.');
   });
 
   it('formats sizes and savings', () => {

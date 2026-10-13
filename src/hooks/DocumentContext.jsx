@@ -538,10 +538,9 @@ export function DocumentProvider({ children }) {
 
   /**
    * Compress the whole edited document (image re-encode at `preset`,
-   * optional metadata strip, unused objects dropped) and download it.
-   * Resolves the size report ({ before, after, images, reencoded }) — where
-   * `before` is the same export uncompressed — or null on failure. If
-   * compression doesn't help, the uncompressed export is downloaded.
+   * optional metadata strip, unused objects dropped) without downloading.
+   * Resolves the report from compressPdf — `before` being the same export
+   * uncompressed — plus `fileName` for saving `bytes`; null on failure.
    */
   const compressDocument = useCallback(
     async ({ preset, stripMetadata }, onProgress) => {
@@ -561,9 +560,7 @@ export function DocumentProvider({ children }) {
           }
         );
         if (loadTokenRef.current !== token) return null;
-        const smaller = result.after < result.before;
-        downloadBytes(smaller ? result.bytes : exported, compressedFileName(primary.name));
-        return { ...result, after: smaller ? result.after : result.before, bytes: undefined };
+        return { ...result, fileName: compressedFileName(primary.name) };
       } catch (err) {
         if (loadTokenRef.current !== token) return null;
         // eslint-disable-next-line no-console

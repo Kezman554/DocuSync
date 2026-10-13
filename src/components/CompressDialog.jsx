@@ -3,16 +3,18 @@ import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import {
   COMPRESSION_PRESETS,
   DEFAULT_PRESET,
+  explainResult,
   formatBytes,
   savingPercent,
 } from '../lib/compress.js';
+import { downloadBytes } from '../lib/download.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import './CompressDialog.css';
 
 /**
  * Light compression: pick a quality preset and whether to strip metadata,
- * then download a compressed copy of the edited document and see the
- * before/after size.
+ * compress the edited document, see the before/after size (and why, if it
+ * didn't help), then choose whether to download the result.
  */
 function CompressDialog({ onClose }) {
   const { compressDocument } = useDocumentContext();
@@ -37,19 +39,25 @@ function CompressDialog({ onClose }) {
 
   if (state === 'done') {
     const saved = savingPercent(report.before, report.after);
+    const helped = report.after < report.before;
+    const notes = explainResult(report);
+    const download = () => {
+      downloadBytes(report.bytes, report.fileName);
+      onClose();
+    };
     return (
       <ConfirmDialog
         role="dialog"
-        title="Compressed copy downloaded"
+        title={helped ? 'Compression ready' : 'Couldn’t make this PDF smaller'}
         message={
-          saved > 0
-            ? 'Your compressed PDF has been saved.'
-            : 'This PDF is already compact, so it was saved without compression.'
+          helped
+            ? `${COMPRESSION_PRESETS[preset].label} compression made a smaller copy. Download it?`
+            : 'Nothing has been downloaded. Here’s why compression didn’t help:'
         }
-        confirmLabel="Done"
-        cancelLabel={null}
+        confirmLabel={helped ? `Download (${formatBytes(report.after)})` : 'Close'}
+        cancelLabel={helped ? 'Close' : null}
         focusCancel={false}
-        onConfirm={onClose}
+        onConfirm={helped ? download : onClose}
         onCancel={onClose}
       >
         <dl className="compress__report" aria-label="File size">
@@ -66,13 +74,22 @@ function CompressDialog({ onClose }) {
             <dd>{saved > 0 ? `${saved}%` : '—'}</dd>
           </div>
         </dl>
-        <p className="compress__detail">
-          {report.images === 0
-            ? 'No images to re-encode.'
-            : `${report.reencoded} of ${report.images} image${
-                report.images === 1 ? '' : 's'
-              } re-encoded.`}
-        </p>
+        <ul className="compress__notes">
+          {notes.map((note) => (
+            <li key={note}>{note}</li>
+          ))}
+        </ul>
+        <button
+          type="button"
+          className="compress__retry"
+          onClick={() => {
+            setReport(null);
+            setProgress(null);
+            setState('setup');
+          }}
+        >
+          Try a different setting
+        </button>
       </ConfirmDialog>
     );
   }
@@ -88,7 +105,7 @@ function CompressDialog({ onClose }) {
           ? progress
             ? `Compressing ${progress.done}/${progress.total}…`
             : 'Compressing…'
-          : 'Compress & download'
+          : 'Compress'
       }
       confirmDisabled={working}
       focusCancel={false}

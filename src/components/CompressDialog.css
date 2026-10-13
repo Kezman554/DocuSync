@@ -22,8 +22,32 @@
   font-variant-numeric: tabular-nums;
 }
 
-.compress__detail {
-  margin: 0 0 1.25rem;
+.compress__notes {
+  margin: 0 0 0.75rem;
+  padding-left: 1.1rem;
   font-size: 0.8rem;
+  line-height: 1.45;
   color: #9aa0a6;
+}
+
+.compress__notes li + li {
+  margin-top: 0.25rem;
+}
+
+.compress__retry {
+  display: block;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.8rem;
+  color: #8ab4ff;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.compress__retry:focus-visible {
+  outline: 2px solid #8ab4ff;
+  outline-offset: 2px;
 }
