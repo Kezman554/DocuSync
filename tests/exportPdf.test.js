@@ -261,6 +261,135 @@ describe('merge', () => {
   });
 });
 
+describe('text annotations', () => {
+  let sourceBytes;
+
+  beforeAll(async () => {
+    pdfjs ??= await import('pdfjs-dist/legacy/build/pdf.mjs');
+    sourceBytes = await makeSourcePdf();
+  });
+
+  const text = (overrides) => ({
+    id: 't1',
+    type: 'text',
+    text: 'Stamped note',
+    font: 'Helvetica',
+    fontSize: 20,
+    color: '#cc0000',
+    rotate: 0,
+    rect: { x: 100, y: 600, width: 150, height: 24 },
+    ...overrides,
+  });
+
+  /** pdf.js text items (str + baseline origin + font family) for one page. */
+  async function textItems(bytes, pageNumber) {
+    const pdf = await pdfjs.getDocument({
+      data: new Uint8Array(bytes),
+      disableFontFace: true,
+      standardFontDataUrl: 'node_modules/pdfjs-dist/standard_fonts/',
+    }).promise;
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+    const ops = await page.getOperatorList();
+    // pdf.js reports fill colours as [r, g, b] bytes; normalise to hex.
+    const toHex = (rgbBytes) =>
+      `#${Array.from(rgbBytes, (v) => v.toString(16).padStart(2, '0')).join('')}`;
+    const fills = ops.fnArray
+      .map((fn, i) => (fn === pdfjs.OPS.setFillRGBColor ? ops.argsArray[i] : null))
+      .filter(Boolean)
+      .map((args) => toHex(args));
+    const items = content.items
+      .filter((item) => item.str.trim())
+      .map((item) => ({
+        str: item.str,
+        transform: item.transform,
+        family: content.styles[item.fontName]?.fontFamily,
+      }));
+    await pdf.destroy();
+    return { items, fills };
+  }
+
+  it('draws real text at the laid-out baseline, in the chosen colour', async () => {
+    const pages = createPageModel(4).map((p, i) =>
+      i === 1 ? { ...p, annotations: [text()] } : p
+    );
+    const out = await buildPdf(src(sourceBytes), pages);
+    const { items, fills } = await textItems(out, 2);
+
+    const stamped = items.find((item) => item.str === 'Stamped note');
+    expect(stamped).toBeDefined(); // extractable = selectable text
+    // [size, 0, 0, size, x, baseline]; box top 624 − first baseline 17.11
+    const [a, b, c, d, e, f] = stamped.transform;
+    expect([a, b, c, d]).toEqual([20, 0, 0, 20]);
+    expect(e).toBeCloseTo(100, 3);
+    expect(f).toBeCloseTo(606.89, 3);
+    expect(stamped.family).toBe('sans-serif');
+    expect(fills).toContain('#cc0000');
+    // Original page text is untouched.
+    expect(items.map((i) => i.str)).toContain('Bravo page two');
+  });
+
+  it('draws multi-line text with each line one line-height lower', async () => {
+    const pages = createPageModel(1).map((p) => ({
+      ...p,
+      annotations: [
+        text({
+          text: 'First\nSecond',
+          font: 'TimesRoman',
+          rect: { x: 50, y: 500, width: 90, height: 48 },
+        }),
+      ],
+    }));
+    const { items } = await textItems(await buildPdf(src(sourceBytes), pages), 1);
+    const first = items.find((i) => i.str === 'First');
+    const second = items.find((i) => i.str === 'Second');
+    expect(first.transform[4]).toBeCloseTo(50, 3);
+    expect(first.transform[5] - second.transform[5]).toBeCloseTo(24, 3);
+    expect(first.family).toBe('serif');
+  });
+
+  it('rotates text placed on a rotated page so it reads upright there', async () => {
+    // Source page 3 has /Rotate 90; text placed upright on it has rotate 90.
+    const pages = createPageModel(4).map((p, i) =>
+      i === 2
+        ? {
+            ...p,
+            annotations: [
+              text({ text: 'Sideways', rotate: 90, rect: { x: 276, y: 100, width: 24, height: 200 } }),
+            ],
+          }
+        : p
+    );
+    const { items } = await textItems(await buildPdf(src(sourceBytes), pages), 3);
+    const t = items.find((i) => i.str === 'Sideways');
+    const [a, b, c, d, e, f] = t.transform;
+    expect([a, b, c, d].map((v) => Math.round(v))).toEqual([0, 20, -20, 0]);
+    expect(e).toBeCloseTo(276 + 17.11, 3);
+    expect(f).toBeCloseTo(100, 3);
+  });
+
+  it('replaces characters the standard fonts can’t encode instead of failing', async () => {
+    const pages = createPageModel(1).map((p) => ({
+      ...p,
+      annotations: [text({ text: 'Done ✅ café' })],
+    }));
+    const { items } = await textItems(await buildPdf(src(sourceBytes), pages), 1);
+    expect(items.map((i) => i.str)).toContain('Done ? café');
+  });
+
+  it('ignores markers and empty text', async () => {
+    const pages = createPageModel(1).map((p) => ({
+      ...p,
+      annotations: [
+        { id: 'm', type: 'marker', rect: { x: 0, y: 0, width: 10, height: 10 } },
+        text({ text: '   ' }),
+      ],
+    }));
+    const { items } = await textItems(await buildPdf(src(sourceBytes), pages), 1);
+    expect(items.map((i) => i.str)).toEqual(['Alpha page one']);
+  });
+});
+
 describe('extractFileName', () => {
   it('names the file after the extracted ranges', () => {
     expect(extractFileName('report.pdf', [2, 3, 4, 7])).toBe('report-pages-2-4_7.pdf');

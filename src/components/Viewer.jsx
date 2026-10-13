@@ -4,6 +4,7 @@ import { effectiveRotation } from '../lib/pageModel.js';
 import EmptyState from './EmptyState.jsx';
 import PageControls from './PageControls.jsx';
 import AnnotationLayer from './AnnotationLayer.jsx';
+import TextFormatBar from './TextFormatBar.jsx';
 import './Viewer.css';
 
 function Viewer() {
@@ -111,6 +112,7 @@ function Viewer() {
           )}
         </div>
       </div>
+      <TextFormatBar />
       <PageControls />
     </section>
   );

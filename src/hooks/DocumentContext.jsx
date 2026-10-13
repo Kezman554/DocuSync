@@ -30,10 +30,19 @@ import {
 import { downloadBytes } from '../lib/download.js';
 import {
   addAnnotation as addAnnotationModel,
+  findAnnotation,
   newAnnotationId,
   removeAnnotation as removeAnnotationModel,
   updateAnnotation as updateAnnotationModel,
 } from '../lib/annotations.js';
+import {
+  DEFAULT_TEXT_STYLE,
+  clampFontSize,
+  rectFromTopLeft,
+  textLayout,
+  topLeftOf,
+} from '../lib/textLayout.js';
+import { measureTextWidth } from '../lib/measureText.js';
 
 /**
  * Shared application state for the loaded PDFs, page model, selection, and zoom.
@@ -72,8 +81,11 @@ export function DocumentProvider({ children }) {
   const [adding, setAdding] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState(null); // dismissible error message
-  const [tool, setTool] = useState('select'); // select | marker
+  const [tool, setTool] = useState('select'); // select | marker | text
   const [selectedAnnotationId, setSelectedAnnotationId] = useState(null);
+  const [editingAnnotationId, setEditingAnnotationId] = useState(null);
+  // Style for the next text box; also updated when a text box is restyled.
+  const [textStyle, setTextStyle] = useState(DEFAULT_TEXT_STYLE);
 
   // Track the most recent open/close so a slow load can't clobber a newer one.
   const loadTokenRef = useRef(0);
@@ -116,6 +128,7 @@ export function DocumentProvider({ children }) {
     setNotice(null);
     setTool('select');
     setSelectedAnnotationId(null);
+    setEditingAnnotationId(null);
   }, []);
 
   /**
@@ -165,6 +178,7 @@ export function DocumentProvider({ children }) {
       setPendingDelete(null);
       setTool('select');
       setSelectedAnnotationId(null);
+      setEditingAnnotationId(null);
       setAdding(false);
       setExporting(false);
       setScale(DEFAULT_SCALE);
@@ -396,12 +410,33 @@ export function DocumentProvider({ children }) {
 
   // --- Annotations (stored on page entries; see lib/annotations.js) -------
 
-  /** Add an annotation anchored at `rect` (PDF space of the page's source). */
-  const addAnnotation = useCallback((pageId, rect, type = 'marker') => {
+  /**
+   * Add an annotation to page `pageId`. `fields` holds its type and data,
+   * with `rect` in the PDF space of the page's source. Returns the new id.
+   */
+  const addAnnotation = useCallback((pageId, fields) => {
     const id = newAnnotationId();
-    setPages((prev) => addAnnotationModel(prev, pageId, { id, type, rect }));
+    setPages((prev) => addAnnotationModel(prev, pageId, { ...fields, id }));
     setSelectedAnnotationId(id);
     return id;
+  }, []);
+
+  /**
+   * Change a text annotation's text and/or style, re-measuring its box so
+   * the text's top-left corner stays where it is.
+   */
+  const updateTextAnnotation = useCallback((id, patch) => {
+    setPages((prev) => {
+      const found = findAnnotation(prev, id);
+      if (!found || found.annotation.type !== 'text') return prev;
+      const next = { ...found.annotation, ...patch };
+      if ('fontSize' in patch) next.fontSize = clampFontSize(patch.fontSize);
+      const width = measureTextWidth(next.text, next.font, next.fontSize);
+      const { height } = textLayout(next);
+      const topLeft = topLeftOf(found.annotation.rect, found.annotation.rotate);
+      next.rect = rectFromTopLeft(topLeft, next.rotate, width, height);
+      return updateAnnotationModel(prev, id, next);
+    });
   }, []);
 
   const updateAnnotationRect = useCallback(
@@ -412,6 +447,7 @@ export function DocumentProvider({ children }) {
   const deleteAnnotation = useCallback((id) => {
     setPages((prev) => removeAnnotationModel(prev, id));
     setSelectedAnnotationId((current) => (current === id ? null : current));
+    setEditingAnnotationId((current) => (current === id ? null : current));
   }, []);
 
   const selectAnnotation = useCallback((id) => setSelectedAnnotationId(id), []);
@@ -465,7 +501,12 @@ export function DocumentProvider({ children }) {
       selectAnnotation,
       addAnnotation,
       updateAnnotationRect,
+      updateTextAnnotation,
       deleteAnnotation,
+      editingAnnotationId,
+      setEditingAnnotationId,
+      textStyle,
+      setTextStyle,
       zoomIn,
       zoomOut,
       resetZoom,
@@ -511,7 +552,12 @@ export function DocumentProvider({ children }) {
       selectAnnotation,
       addAnnotation,
       updateAnnotationRect,
+      updateTextAnnotation,
       deleteAnnotation,
+      editingAnnotationId,
+      setEditingAnnotationId,
+      textStyle,
+      setTextStyle,
       zoomIn,
       zoomOut,
       resetZoom,

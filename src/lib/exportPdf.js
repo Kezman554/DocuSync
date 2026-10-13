@@ -2,13 +2,16 @@
  * Bake the in-memory page model into a new PDF with pdf-lib.
  *
  * Pages are copied as PDF objects (content streams, fonts, resources), never
- * rasterised, so text stays selectable and vector content stays sharp. Only
- * the page order and each page's /Rotate change.
+ * rasterised, so text stays selectable and vector content stays sharp. The
+ * page order and each page's /Rotate change, and annotations are drawn on top
+ * (text as real, selectable text via drawText).
  *
  * pdf-lib is imported lazily so it's only loaded when the user exports.
  */
 import { effectiveRotation } from './pageModel.js';
 import { formatPageRanges } from './pageRanges.js';
+import { getAnnotations } from './annotations.js';
+import { hexToRgb, textDrawOps } from './textLayout.js';
 
 /** Thrown for PDFs we can't rewrite (e.g. encrypted); `message` is user-facing. */
 export class ExportError extends Error {
@@ -28,7 +31,8 @@ export class ExportError extends Error {
 export async function buildPdf(sources, pages) {
   if (!pages.length) throw new ExportError('There are no pages to export.');
 
-  const { PDFDocument, degrees } = await import('pdf-lib');
+  const pdfLib = await import('pdf-lib');
+  const { PDFDocument, degrees } = pdfLib;
 
   // Group output slots by source, in order of first appearance.
   const slotsBySource = new Map();
@@ -70,13 +74,57 @@ export async function buildPdf(sources, pages) {
     });
   }
 
-  placed.forEach((page, i) => {
+  const embedFont = fontEmbedder(output, pdfLib);
+  for (const [i, page] of placed.entries()) {
     const intrinsic = page.getRotation().angle;
     page.setRotation(degrees(effectiveRotation(intrinsic, pages[i].rotation)));
     output.addPage(page);
-  });
+    await drawAnnotations(page, getAnnotations(pages[i]), embedFont, pdfLib);
+  }
 
   return output.save();
+}
+
+/** Embed each standard font at most once per output document. */
+function fontEmbedder(output, { StandardFonts }) {
+  const cache = new Map();
+  return (name) => {
+    const key = StandardFonts[name] ? name : 'Helvetica';
+    if (!cache.has(key)) cache.set(key, output.embedFont(StandardFonts[key]));
+    return cache.get(key);
+  };
+}
+
+/**
+ * Draw annotations onto a copied page. Annotation coordinates are in the
+ * source page's PDF space, which the copied page keeps. Markers are an
+ * on-screen test type and aren't exported.
+ */
+async function drawAnnotations(page, annotations, embedFont, { degrees, rgb }) {
+  for (const annotation of annotations) {
+    if (annotation.type !== 'text' || !annotation.text?.trim()) continue;
+    const font = await embedFont(annotation.font);
+    const { r, g, b } = hexToRgb(annotation.color);
+    const supported = new Set(font.getCharacterSet());
+    for (const op of textDrawOps(annotation)) {
+      page.drawText(encodable(op.text, supported), {
+        x: op.x,
+        y: op.y,
+        size: annotation.fontSize,
+        font,
+        color: rgb(r, g, b),
+        rotate: degrees(annotation.rotate),
+      });
+    }
+  }
+}
+
+/**
+ * Standard fonts only cover WinAnsi; replace anything else (emoji, CJK…)
+ * with "?" rather than failing the whole export.
+ */
+function encodable(text, supported) {
+  return Array.from(text, (ch) => (supported.has(ch.codePointAt(0)) ? ch : '?')).join('');
 }
 
 async function loadSource(PDFDocument, bytes, label) {

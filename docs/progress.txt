@@ -200,3 +200,32 @@ DocuSync — Progress Log
   check: ignoring zoom in the layer fails 2 tests.
 - Not yet baked into export (markers are a test annotation type; text/image/
   signature sessions will add real types + export).
+
+2026-10-13 — Text annotations
+- src/lib/textLayout.js (pure): text annotation = { type:'text', text, font
+  (Helvetica|TimesRoman|Courier = pdf-lib StandardFonts), fontSize, color,
+  rotate (orientation in PDF space, = page total rotation when placed so it
+  reads upright; turns with the page afterwards), rect (PDF bounds) }.
+  textLayout() puts baselines via the fonts' AFM ascender/descender centred
+  in 1.2em line boxes — the SAME function drives the SVG preview and the
+  export, so baselines match by construction (only glyph shapes differ on
+  screen). Lines break on Enter only (auto-wrap would differ browser vs PDF).
+  Own-frame helpers (anchorOf, ownToPdf, rectFromTopLeft, topLeftOf) agree
+  with coords.viewportRectToPdfPlacement; textDrawOps -> per-line drawText.
+- measureText.js: canvas measureText for on-screen box width (fallback
+  estimate); width only affects the selection box, not export positions.
+- exportPdf: draws text annotations with drawText (font embedded once per
+  doc, rgb colour, rotate); unencodable chars (emoji/CJK) -> "?" instead of
+  failing; markers not exported.
+- UI: "T Text" tool (one-shot): click = top-left of a new box, type in place
+  (textarea in the box's own frame), Esc/blur finishes, empty boxes removed;
+  Enter or double-click re-edits; drag/arrow keys move; no resize handles
+  (size via font size). TextFormatBar (font/size/colour) styles the
+  selected box (top-left stays put) and sets defaults for the next one;
+  size box keeps a draft string so retyping works.
+- Tests: 156 passing. Real pdf.js reads exported bytes (also inside jsdom)
+  and checks baseline origin, size, family, fill colour: click position at
+  100% and 150% zoom, restyle, style defaults, multi-line spacing, text on a
+  rotated page (rotated matrix), page rotated after placing, drag move,
+  re-edit, empty discard, emoji fallback. Mutation check: dropping text
+  rotation in export fails 2 tests.

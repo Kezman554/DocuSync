@@ -99,6 +99,18 @@ function PageControls() {
         >
           ▭ Marker
         </button>
+        <button
+          type="button"
+          className={`page-controls__btn page-controls__btn--tool${
+            tool === 'text' ? ' page-controls__btn--active' : ''
+          }`}
+          onClick={() => setTool(tool === 'text' ? 'select' : 'text')}
+          aria-pressed={tool === 'text'}
+          aria-label="Add text"
+          title="Add text — click where it should start, then type (Esc cancels)"
+        >
+          T Text
+        </button>
       </div>
 
       <div className="page-controls__group">
