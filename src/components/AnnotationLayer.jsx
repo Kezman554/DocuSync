@@ -13,9 +13,11 @@ import {
 import { defaultImageSize } from '../lib/imageInfo.js';
 import { defaultStampSize, stampOrigin } from '../lib/stamps.js';
 import { DEFAULT_NUMBERING, pageNumberAnnotation } from '../lib/pageNumbering.js';
+import { DEFAULT_WATERMARK, imageWatermarkOp, textWatermarkOp } from '../lib/watermark.js';
 import {
   normalizeQuarterTurn,
   pageBoxFromView,
+  pdfToViewportPoint,
   pdfToViewportRect,
   viewportSize,
   viewportToPdfPoint,
@@ -201,6 +203,8 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
     pendingStamp,
     numbering,
     numberLabels,
+    watermark,
+    watermarkApplies,
   } = useDocumentContext();
 
   const view = useMemo(
@@ -591,6 +595,58 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
           </div>
         );
       })}
+
+      {watermarkApplies?.[pageNumber - 1] &&
+        (() => {
+          // Same placement as the export; drawn from its start point and
+          // turned on screen (CSS rotates clockwise, our angle is CCW).
+          const config = { ...DEFAULT_WATERMARK, ...watermark };
+          const geometry = { pageBox: view.pageBox, rotation: view.rotation };
+          const isImage = config.type === 'image' && config.image;
+          if (!isImage && !config.text?.trim()) return null;
+          const op = isImage
+            ? imageWatermarkOp(config, geometry)
+            : textWatermarkOp(config, geometry, measureTextWidth(config.text, config.font, 1));
+          const start = pdfToViewportPoint({ x: op.x, y: op.y }, view);
+          const font = STANDARD_FONTS[config.font] ?? STANDARD_FONTS.Helvetica;
+          return (
+            <div
+              className="watermark-preview"
+              role="note"
+              aria-label={`Watermark: ${isImage ? config.image.name ?? 'image' : config.text}`}
+              style={{
+                left: `${start.x}px`,
+                top: `${isImage ? start.y - op.height * scale : start.y}px`,
+                transformOrigin: isImage ? '0 100%' : '0 0',
+                transform: `rotate(${-config.angle}deg)`,
+                opacity: config.opacity,
+              }}
+            >
+              {isImage ? (
+                <img
+                  src={config.image.url}
+                  alt=""
+                  style={{ width: `${op.width * scale}px`, height: `${op.height * scale}px` }}
+                />
+              ) : (
+                <svg className="watermark-preview__svg" width="1" height="1" aria-hidden="true">
+                  <text
+                    x={0}
+                    y={0}
+                    fontFamily={font.css}
+                    fontStyle={font.style}
+                    fontWeight={font.weight}
+                    fontSize={op.size * scale}
+                    fill={config.color}
+                    xmlSpace="preserve"
+                  >
+                    {config.text}
+                  </text>
+                </svg>
+              )}
+            </div>
+          );
+        })()}
 
       {numberLabels?.[pageNumber - 1] &&
         (() => {

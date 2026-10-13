@@ -14,6 +14,7 @@ import { getAnnotations } from './annotations.js';
 import { hexToRgb, textDrawOps } from './textLayout.js';
 import { anchorOf, ownSize } from './ownFrame.js';
 import { pageNumberAnnotation } from './pageNumbering.js';
+import { imageWatermarkOp, textWatermarkOp } from './watermark.js';
 
 /** Thrown for PDFs we can't rewrite (e.g. encrypted); `message` is user-facing. */
 export class ExportError extends Error {
@@ -28,12 +29,14 @@ export class ExportError extends Error {
  *   original, unmodified files keyed by sourceId (only those `pages` use are read)
  * @param {{ sourceId: string, sourcePage: number, rotation: number }[]} pages
  *   the page model (or a slice of it), in output order
- * @param {{ pageNumbers?: { labels: (string|null)[], style: object } }} [options]
+ * @param {{ pageNumbers?: { labels: (string|null)[], style: object },
+ *           watermark?: { config: object, applies: boolean[] } }} [options]
  *   page numbering: a label per output page (null = none) and its style
- *   (lib/pageNumbering.js)
+ *   (lib/pageNumbering.js); watermark: its settings (lib/watermark.js) and
+ *   which output pages get it
  * @returns {Promise<Uint8Array>} the new PDF's bytes
  */
-export async function buildPdf(sources, pages, { pageNumbers } = {}) {
+export async function buildPdf(sources, pages, { pageNumbers, watermark } = {}) {
   if (!pages.length) throw new ExportError('There are no pages to export.');
 
   const pdfLib = await import('pdf-lib');
@@ -85,6 +88,7 @@ export async function buildPdf(sources, pages, { pageNumbers } = {}) {
     page.setRotation(degrees(effectiveRotation(intrinsic, pages[i].rotation)));
     output.addPage(page);
     await drawAnnotations(page, getAnnotations(pages[i]), embed, pdfLib);
+    if (watermark?.applies?.[i]) await drawWatermark(page, watermark.config, embed, pdfLib);
 
     const label = pageNumbers?.labels?.[i];
     if (label) {
@@ -166,6 +170,42 @@ async function drawAnnotations(page, annotations, embed, { degrees, rgb }) {
       });
     }
   }
+}
+
+/**
+ * Draw a watermark centred on the page as displayed, turned by its angle,
+ * at its opacity — over the page content and annotations.
+ */
+async function drawWatermark(page, config, embed, { degrees, rgb }) {
+  const geometry = { pageBox: page.getCropBox(), rotation: page.getRotation().angle };
+  if (config.type === 'image') {
+    if (!config.image) return;
+    const image = await embed.image(config.image);
+    const op = imageWatermarkOp(config, geometry);
+    page.drawImage(image, {
+      x: op.x,
+      y: op.y,
+      width: op.width,
+      height: op.height,
+      rotate: degrees(op.rotate),
+      opacity: config.opacity,
+    });
+    return;
+  }
+  if (!config.text?.trim()) return;
+  const font = await embed.font(config.font);
+  const text = encodable(config.text, new Set(font.getCharacterSet()));
+  const op = textWatermarkOp({ ...config, text }, geometry, font.widthOfTextAtSize(text, 1));
+  const { r, g, b } = hexToRgb(config.color);
+  page.drawText(text, {
+    x: op.x,
+    y: op.y,
+    size: op.size,
+    font,
+    color: rgb(r, g, b),
+    rotate: degrees(op.rotate),
+    opacity: config.opacity,
+  });
 }
 
 /**

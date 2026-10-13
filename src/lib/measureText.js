@@ -25,6 +25,7 @@ const AVERAGE_GLYPH = {
   Helvetica: 0.55,
   TimesRoman: 0.5,
   Courier: 0.6,
+  HelveticaBold: 0.6,
   TimesRomanBoldItalic: 0.55,
   ZapfDingbats: 0.85,
 };

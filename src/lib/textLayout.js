@@ -62,6 +62,13 @@ export const STANDARD_FONTS = {
     ascender: 629,
     descender: -157,
   },
+  HelveticaBold: {
+    label: 'Helvetica Bold',
+    css: 'Helvetica, Arial, "Liberation Sans", sans-serif',
+    weight: 'bold',
+    ascender: 718,
+    descender: -207,
+  },
   TimesRomanBoldItalic: {
     label: 'Times Bold Italic',
     css: '"Times New Roman", Times, "Liberation Serif", serif',

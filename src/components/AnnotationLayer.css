@@ -184,3 +184,20 @@
   position: absolute;
   pointer-events: none;
 }
+
+/* Watermark preview: placed like the export, see-through, not interactive. */
+.watermark-preview {
+  position: absolute;
+  pointer-events: none;
+  line-height: 0;
+}
+
+.watermark-preview__svg {
+  display: block;
+  overflow: visible;
+}
+
+.watermark-preview img {
+  display: block;
+  image-orientation: none;
+}

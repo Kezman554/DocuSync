@@ -32,6 +32,7 @@ import { renderPdfToImages } from '../lib/renderPages.js';
 import { IMAGE_FORMATS, imageFileName, zipFileName } from '../lib/imageExport.js';
 import { createZip } from '../lib/zip.js';
 import { DEFAULT_NUMBERING, pageNumberLabels } from '../lib/pageNumbering.js';
+import { DEFAULT_WATERMARK, watermarkApplies as watermarkAppliesFor } from '../lib/watermark.js';
 import {
   addAnnotation as addAnnotationModel,
   findAnnotation,
@@ -92,6 +93,8 @@ export function DocumentProvider({ children }) {
   const [imagesToPdf, setImagesToPdf] = useState(null);
   // Page numbering for the document (null = off); see lib/pageNumbering.js.
   const [numbering, setNumbering] = useState(null);
+  // Watermark for the document (null = off); see lib/watermark.js.
+  const [watermark, setWatermark] = useState(null);
   // select | marker | text | image | stamp
   const [tool, setToolState] = useState('select');
   // Image chosen with "Add image" (or an image stamp), waiting to be placed.
@@ -161,6 +164,7 @@ export function DocumentProvider({ children }) {
     setSelectedAnnotationId(null);
     setEditingAnnotationId(null);
     setNumbering(null);
+    setWatermark(null);
     revokeImageUrls();
   }, [setTool, revokeImageUrls]);
 
@@ -213,6 +217,7 @@ export function DocumentProvider({ children }) {
       setSelectedAnnotationId(null);
       setEditingAnnotationId(null);
       setNumbering(null);
+      setWatermark(null);
       revokeImageUrls();
       setAdding(false);
       setExporting(false);
@@ -392,6 +397,12 @@ export function DocumentProvider({ children }) {
     [numbering, pages.length]
   );
 
+  // Which pages (by position) get the watermark.
+  const watermarkApplies = useMemo(
+    () => (watermark ? watermarkAppliesFor(watermark.pages, pages.length) : null),
+    [watermark, pages.length]
+  );
+
   /**
    * Bake the pages at 1-based `positions` into new PDF bytes, reading only
    * the source files they use. Page numbers keep their position in the
@@ -410,9 +421,13 @@ export function DocumentProvider({ children }) {
         labels: positions.map((n) => numberLabels[n - 1] ?? null),
         style: { ...DEFAULT_NUMBERING, ...numbering },
       };
-      return buildPdf(inputs, entries, { pageNumbers });
+      const watermarkOption = watermarkApplies && {
+        config: { ...DEFAULT_WATERMARK, ...watermark },
+        applies: positions.map((n) => watermarkApplies[n - 1] ?? false),
+      };
+      return buildPdf(inputs, entries, { pageNumbers, watermark: watermarkOption });
     },
-    [pages, sourcesById, numbering, numberLabels]
+    [pages, sourcesById, numbering, numberLabels, watermark, watermarkApplies]
   );
 
   /**
@@ -684,6 +699,9 @@ export function DocumentProvider({ children }) {
       numbering,
       numberLabels,
       setNumbering,
+      watermark,
+      watermarkApplies,
+      setWatermark,
       dismissNotice,
       tool,
       setTool,
@@ -747,6 +765,9 @@ export function DocumentProvider({ children }) {
       numbering,
       numberLabels,
       setNumbering,
+      watermark,
+      watermarkApplies,
+      setWatermark,
       dismissNotice,
       tool,
       setTool,

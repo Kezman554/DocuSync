@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import PageThumbnail from './PageThumbnail.jsx';
 import PageNumbersDialog from './PageNumbersDialog.jsx';
+import WatermarkDialog from './WatermarkDialog.jsx';
 import './ThumbnailSidebar.css';
 
 const DRAG_TYPE = 'application/x-docusync-page';
@@ -22,8 +23,10 @@ function ThumbnailSidebar({ open }) {
     nudgeSelected,
     requestDelete,
     numbering,
+    watermark,
   } = useDocumentContext();
   const [numbersOpen, setNumbersOpen] = useState(false);
+  const [watermarkOpen, setWatermarkOpen] = useState(false);
 
   // Callback ref → state so the scroll container can be passed as the
   // IntersectionObserver root once it's mounted.
@@ -169,6 +172,16 @@ function ThumbnailSidebar({ open }) {
             {numbering && <span className="sidebar__badge">On</span>}
           </button>
           {numbersOpen && <PageNumbersDialog onClose={() => setNumbersOpen(false)} />}
+          <button
+            type="button"
+            className={`sidebar__action${watermark ? ' sidebar__action--on' : ''}`}
+            onClick={() => setWatermarkOpen(true)}
+            aria-haspopup="dialog"
+          >
+            Watermark…
+            {watermark && <span className="sidebar__badge">On</span>}
+          </button>
+          {watermarkOpen && <WatermarkDialog onClose={() => setWatermarkOpen(false)} />}
         </div>
       ) : (
         <p className="sidebar__empty">No document open</p>

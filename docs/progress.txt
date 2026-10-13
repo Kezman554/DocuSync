@@ -459,3 +459,34 @@ DocuSync — Progress Log
   positions on every page, renumber after delete, start + skip cover + top,
   extract keeps document numbers, remove + invalid start). Mutation check:
   numbering by export index instead of document position fails 1.
+
+2026-10-13 — Watermarking
+- src/lib/watermark.js (pure): text or image watermark, document-level.
+  Geometry in "shown" space (page as displayed): centred, turned by any
+  angle (CCW as seen), mapped to PDF via coords.viewportToPdfPoint, PDF
+  rotate = angle + page rotation — so rotated pages get the same look.
+  autoFontSize fits the rotated text's bounds to 80% of the page (exact font
+  widths at export); images sized as a fraction of shown width (capped by
+  height). watermarkApplies(pages, count): 'all' or ranges, numbers past the
+  end clamped to count+1 before parsing (bounded work; open ranges end at
+  the last page).
+- textLayout: HelveticaBold added (default watermark font).
+- Export: buildPdf(..., { watermark: { config, applies } }) draws it after
+  annotations, before page numbers, with drawText/drawImage `opacity`
+  (PDF ExtGState ca). Context holds `watermark` (reset on open/close) and
+  passes it through buildBytes, so PDF/extract/image exports all carry it.
+- UI: sidebar "Watermark…" (badge "On") -> WatermarkDialog: Text (text,
+  font, size Fit/fixed, colour) or Image (PNG/JPG, % of page width);
+  opacity 5–100%; angle (number + 0/45/-45/90 presets); All pages / Only
+  pages; Remove. Viewer previews it on applicable pages (same placement,
+  CSS opacity + rotation).
+- Verified in headless Edge: DRAFT #808080 at 25% renders with darkest
+  pixels exactly 223 (= 255 − 0.25·127) on every page incl. a /Rotate 90
+  page; at 100% the same glyphs are 128.
+- Bugs caught by tests: typing "2-" in the pages box crashed (open range
+  parsed against "infinity" -> Set overflow); fixed with the bounded clamp.
+  Two controls were both labelled "Text" (now "Watermark text").
+- Tests: 297 passing (+14 pure/export: auto size fills 80%, centring at all
+  angles × rotations, image sizing/cap, applies incl. huge ranges, exported
+  text angle/centre/opacity on every page incl. rotated, chosen pages only,
+  image watermark; +4 UI). Mutation check: dropping opacity fails 4.
