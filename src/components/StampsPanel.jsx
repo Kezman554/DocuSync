@@ -6,6 +6,7 @@ import { STANDARD_FONTS, textLayout } from '../lib/textLayout.js';
 import { measureTextWidth } from '../lib/measureText.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import SignatureDialog from './SignatureDialog.jsx';
+import PhotoSignatureDialog from './PhotoSignatureDialog.jsx';
 import './StampsPanel.css';
 
 /** Small preview of a stamp's look: vector text via the shared layout, or the image. */
@@ -220,8 +221,10 @@ function StampsPanel({ open, onClose }) {
     deleteStamp,
   } = useStamps();
   const fileRef = useRef(null);
+  const photoRef = useRef(null);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [drawing, setDrawing] = useState(false);
+  const [photoFile, setPhotoFile] = useState(null);
 
   if (!open) return null;
 
@@ -293,6 +296,26 @@ function StampsPanel({ open, onClose }) {
                   <button
                     type="button"
                     className="stamps-panel__btn stamps-panel__btn--ghost"
+                    onClick={() => photoRef.current?.click()}
+                    title="Photograph or upload a signature on paper"
+                  >
+                    From photo…
+                  </button>
+                  <input
+                    ref={photoRef}
+                    type="file"
+                    accept="image/*"
+                    className="stamps-panel__file"
+                    aria-label="Choose signature photo"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = '';
+                      if (file) setPhotoFile(file);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="stamps-panel__btn stamps-panel__btn--ghost"
                     onClick={() => fileRef.current?.click()}
                   >
                     Add from image…
@@ -323,6 +346,17 @@ function StampsPanel({ open, onClose }) {
             setDrawing(false);
           }}
           onCancel={() => setDrawing(false)}
+        />
+      )}
+
+      {photoFile && (
+        <PhotoSignatureDialog
+          file={photoFile}
+          onSave={async (bytes, name) => {
+            await addSignature(bytes, name);
+            setPhotoFile(null);
+          }}
+          onCancel={() => setPhotoFile(null)}
         />
       )}
 

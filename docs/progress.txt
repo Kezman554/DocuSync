@@ -323,3 +323,34 @@ DocuSync — Progress Log
   PNG with alpha -> survives reload; exact crop rect from captured strokes;
   undo/clear; pen colour; opaque PNG refused; cancel). Mutation check:
   removing the alpha guard fails its test.
+
+2026-10-13 — Photo -> transparent signature
+- src/lib/photoSignature.js (pure, RGBA buffers): toGrayscale (Rec.601,
+  alpha over white) -> localMeans via integral image (window = 1/10 of the
+  short side) -> inkAlpha (ink if darker than local mean by > sensitivity
+  (relative, default 0.15) AND > minContrast (14 levels); smoothstep band
+  for anti-aliased edges) -> cleanUp (8-connected blobs: drop specks below
+  max(6px, 0.003% of area); drop marks touching the photo border unless
+  nothing else remains) -> inkBounds (+8px) -> uniform ink colour (averaged
+  from solid ink, or override) with paper alpha 0, cropped. photoToSignature
+  returns { data, width, height, bounds, inkColour, inkPixels } or null.
+- src/lib/photoSignatureBrowser.js: decodePhoto (createImageBitmap with
+  imageOrientation from-image, so phone photos are upright; scaled to <=1600
+  px; <img> fallback; friendly error e.g. HEIC), paintPixels, encodePng
+  (alpha guard).
+- PhotoSignatureDialog (Stamps panel > Signatures > "From photo…", accepts
+  any image incl. phone camera): original + live preview on a checkerboard,
+  ink detection slider (9 levels), "ignore marks touching the edge", ink
+  colour As photographed / Black / Blue, name, Save -> addSignature.
+- Sample: tests/fixtures/signature-photo.jpg (1600x1100, generated: uneven
+  lighting + vignette, hand shadow, wooden table strip, grain, blur, JPEG,
+  blue ballpoint signature). Run through the real browser pipeline in
+  headless Edge (no dev server): RGBA PNG, crop hugs the signature, corners
+  transparent, 0 stray ink pixels vs the generator's ground-truth mask, 100%
+  of true ink solid; transform 133 ms. Visually checked: clean.
+- Tests: 228 passing (+15 transform incl. building blocks; synthetic photos
+  with exact ground truth (tests/helpers/syntheticPhoto.js) — uneven light
+  where a global threshold provably fails, soft shadow, specks + table edge
+  + kept i-dot, soft edges, colour, sensitivity, 1600x1200 timing; +5 dialog
+  with decode/encode stood in). Mutation check: global instead of local
+  mean fails 4 tests.
