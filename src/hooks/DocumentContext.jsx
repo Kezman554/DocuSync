@@ -31,6 +31,8 @@ import { downloadBytes } from '../lib/download.js';
 import { renderPdfToImages } from '../lib/renderPages.js';
 import { IMAGE_FORMATS, imageFileName, zipFileName } from '../lib/imageExport.js';
 import { createZip } from '../lib/zip.js';
+import { COMPRESSION_PRESETS, compressPdf, compressedFileName } from '../lib/compress.js';
+import { encodeImageAsJpeg } from '../lib/compressBrowser.js';
 import { DEFAULT_NUMBERING, pageNumberLabels } from '../lib/pageNumbering.js';
 import { DEFAULT_WATERMARK, watermarkApplies as watermarkAppliesFor } from '../lib/watermark.js';
 import {
@@ -534,6 +536,49 @@ export function DocumentProvider({ children }) {
   );
   const dismissNotice = useCallback(() => setNotice(null), []);
 
+  /**
+   * Compress the whole edited document (image re-encode at `preset`,
+   * optional metadata strip, unused objects dropped) and download it.
+   * Resolves the size report ({ before, after, images, reencoded }) — where
+   * `before` is the same export uncompressed — or null on failure. If
+   * compression doesn't help, the uncompressed export is downloaded.
+   */
+  const compressDocument = useCallback(
+    async ({ preset, stripMetadata }, onProgress) => {
+      const { quality, maxSide } = COMPRESSION_PRESETS[preset];
+      if (!primary || pages.length === 0) return null;
+      const token = loadTokenRef.current;
+      setExporting(true);
+      setNotice(null);
+      try {
+        const exported = await buildBytes(pages.map((_, i) => i + 1));
+        const result = await compressPdf(
+          exported,
+          { quality, maxSide, stripMetadata },
+          encodeImageAsJpeg,
+          (done, total) => {
+            if (loadTokenRef.current === token) onProgress?.(done, total);
+          }
+        );
+        if (loadTokenRef.current !== token) return null;
+        const smaller = result.after < result.before;
+        downloadBytes(smaller ? result.bytes : exported, compressedFileName(primary.name));
+        return { ...result, after: smaller ? result.after : result.before, bytes: undefined };
+      } catch (err) {
+        if (loadTokenRef.current !== token) return null;
+        // eslint-disable-next-line no-console
+        console.error('Compression failed', err);
+        setNotice(
+          err instanceof ExportError ? err.message : 'Compression failed. Please try again.'
+        );
+        return null;
+      } finally {
+        if (loadTokenRef.current === token) setExporting(false);
+      }
+    },
+    [primary, pages, buildBytes]
+  );
+
   /** Open the images → PDF dialog with `files` (null closes it). */
   const requestImagesToPdf = useCallback((files) => {
     const list = Array.from(files ?? []);
@@ -694,6 +739,7 @@ export function DocumentProvider({ children }) {
       exportDocument,
       extractPages,
       exportImages,
+      compressDocument,
       imagesToPdf,
       requestImagesToPdf,
       numbering,
@@ -760,6 +806,7 @@ export function DocumentProvider({ children }) {
       exportDocument,
       extractPages,
       exportImages,
+      compressDocument,
       imagesToPdf,
       requestImagesToPdf,
       numbering,

@@ -1,0 +1,29 @@
+.compress__report {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin: -0.5rem 0 0.75rem;
+}
+
+.compress__report div {
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  background: #1e1f23;
+}
+
+.compress__report dt {
+  font-size: 0.75rem;
+  color: #9aa0a6;
+}
+
+.compress__report dd {
+  margin: 0.15rem 0 0;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.compress__detail {
+  margin: 0 0 1.25rem;
+  font-size: 0.8rem;
+  color: #9aa0a6;
+}

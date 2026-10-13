@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import ExtractPagesDialog from './ExtractPagesDialog.jsx';
 import ExportImagesDialog from './ExportImagesDialog.jsx';
+import CompressDialog from './CompressDialog.jsx';
 import './Toolbar.css';
 
 function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
@@ -25,6 +26,7 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
   const imagesInputRef = useRef(null);
   const [extractOpen, setExtractOpen] = useState(false);
   const [imagesOpen, setImagesOpen] = useState(false);
+  const [compressOpen, setCompressOpen] = useState(false);
 
   // Copy the FileList before resetting the input (reset empties it).
   const takeFiles = (event) => {
@@ -120,6 +122,17 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
           <button
             type="button"
             className="toolbar__btn toolbar__btn--ghost"
+            onClick={() => setCompressOpen(true)}
+            disabled={exporting}
+            title="Download a smaller copy: re-encode images, strip metadata"
+          >
+            Compress…
+          </button>
+        )}
+        {hasDocument && (
+          <button
+            type="button"
+            className="toolbar__btn toolbar__btn--ghost"
             onClick={() => addInputRef.current?.click()}
             disabled={adding}
             aria-busy={adding}
@@ -186,6 +199,9 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
       )}
       {imagesOpen && hasDocument && (
         <ExportImagesDialog onClose={() => setImagesOpen(false)} />
+      )}
+      {compressOpen && hasDocument && (
+        <CompressDialog onClose={() => setCompressOpen(false)} />
       )}
 
       {notice && (

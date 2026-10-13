@@ -8,6 +8,7 @@ const FOCUSABLE =
  * Modal confirmation. Focus starts on Cancel (the safe choice) unless
  * `focusCancel` is false (e.g. when `children` holds an autoFocus input).
  * Tab is trapped inside, and Escape or a backdrop click cancels.
+ * `cancelLabel={null}` leaves out the Cancel button (e.g. a final "Done").
  */
 function ConfirmDialog({
   title,
@@ -73,14 +74,16 @@ function ConfirmDialog({
         </p>
         {children}
         <div className="confirm-dialog__actions">
-          <button
-            ref={cancelRef}
-            type="button"
-            className="confirm-dialog__btn"
-            onClick={onCancel}
-          >
-            {cancelLabel}
-          </button>
+          {cancelLabel !== null && (
+            <button
+              ref={cancelRef}
+              type="button"
+              className="confirm-dialog__btn"
+              onClick={onCancel}
+            >
+              {cancelLabel}
+            </button>
+          )}
           <button
             type="button"
             className={`confirm-dialog__btn confirm-dialog__btn--primary${
