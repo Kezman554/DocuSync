@@ -12,6 +12,7 @@ import {
 } from '../lib/annotations.js';
 import { defaultImageSize } from '../lib/imageInfo.js';
 import { defaultStampSize, stampOrigin } from '../lib/stamps.js';
+import { DEFAULT_NUMBERING, pageNumberAnnotation } from '../lib/pageNumbering.js';
 import {
   normalizeQuarterTurn,
   pageBoxFromView,
@@ -198,6 +199,8 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
     textStyle,
     pendingImage,
     pendingStamp,
+    numbering,
+    numberLabels,
   } = useDocumentContext();
 
   const view = useMemo(
@@ -588,6 +591,41 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
           </div>
         );
       })}
+
+      {numberLabels?.[pageNumber - 1] &&
+        (() => {
+          // Same layout as the export; width measured on screen.
+          const label = numberLabels[pageNumber - 1];
+          const style = { ...DEFAULT_NUMBERING, ...numbering };
+          const number = pageNumberAnnotation(
+            label,
+            view,
+            style,
+            measureTextWidth(label, style.font, style.fontSize)
+          );
+          const boxPx = pdfToViewportRect(number.rect, view);
+          return (
+            <div
+              className="page-number-preview"
+              role="note"
+              aria-label={`Page number: ${label}`}
+              style={{
+                left: `${boxPx.x}px`,
+                top: `${boxPx.y}px`,
+                width: `${boxPx.width}px`,
+                height: `${boxPx.height}px`,
+              }}
+            >
+              <TextContent
+                annotation={number}
+                boxPx={boxPx}
+                scale={scale}
+                pageRotation={view.rotation}
+                editing={false}
+              />
+            </div>
+          );
+        })()}
 
       {draft && (
         <div

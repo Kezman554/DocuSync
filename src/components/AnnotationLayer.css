@@ -178,3 +178,9 @@
   pointer-events: none;
   user-select: none;
 }
+
+/* Page-number preview: same position as the export; not interactive. */
+.page-number-preview {
+  position: absolute;
+  pointer-events: none;
+}

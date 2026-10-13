@@ -31,6 +31,7 @@ import { downloadBytes } from '../lib/download.js';
 import { renderPdfToImages } from '../lib/renderPages.js';
 import { IMAGE_FORMATS, imageFileName, zipFileName } from '../lib/imageExport.js';
 import { createZip } from '../lib/zip.js';
+import { DEFAULT_NUMBERING, pageNumberLabels } from '../lib/pageNumbering.js';
 import {
   addAnnotation as addAnnotationModel,
   findAnnotation,
@@ -89,6 +90,8 @@ export function DocumentProvider({ children }) {
   const [progress, setProgress] = useState(null); // { done, total } while rendering images
   // Image files waiting in the "Create a PDF from images" dialog.
   const [imagesToPdf, setImagesToPdf] = useState(null);
+  // Page numbering for the document (null = off); see lib/pageNumbering.js.
+  const [numbering, setNumbering] = useState(null);
   // select | marker | text | image | stamp
   const [tool, setToolState] = useState('select');
   // Image chosen with "Add image" (or an image stamp), waiting to be placed.
@@ -157,6 +160,7 @@ export function DocumentProvider({ children }) {
     setTool('select');
     setSelectedAnnotationId(null);
     setEditingAnnotationId(null);
+    setNumbering(null);
     revokeImageUrls();
   }, [setTool, revokeImageUrls]);
 
@@ -208,6 +212,7 @@ export function DocumentProvider({ children }) {
       setTool('select');
       setSelectedAnnotationId(null);
       setEditingAnnotationId(null);
+      setNumbering(null);
       revokeImageUrls();
       setAdding(false);
       setExporting(false);
@@ -381,20 +386,33 @@ export function DocumentProvider({ children }) {
     setAnchorId(next[index].id);
   }, [pendingDelete, pages, currentPage]);
 
+  // Each page's number label by position in the whole edited document.
+  const numberLabels = useMemo(
+    () => (numbering ? pageNumberLabels(pages.length, numbering) : null),
+    [numbering, pages.length]
+  );
+
   /**
-   * Bake `entries` (a slice of the page model) into new PDF bytes, reading
-   * only the source files they use. Shared by PDF and image export.
+   * Bake the pages at 1-based `positions` into new PDF bytes, reading only
+   * the source files they use. Page numbers keep their position in the
+   * whole document (so an extract of pages 3–4 reads "3", "4"). Shared by
+   * PDF export, extraction and image export.
    */
   const buildBytes = useCallback(
-    async (entries) => {
+    async (positions) => {
+      const entries = positions.map((n) => pages[n - 1]).filter(Boolean);
       const inputs = {};
       for (const id of new Set(entries.map((p) => p.sourceId))) {
         const src = sourcesById[id];
         if (src) inputs[id] = { name: src.name, bytes: await src.file.arrayBuffer() };
       }
-      return buildPdf(inputs, entries);
+      const pageNumbers = numberLabels && {
+        labels: positions.map((n) => numberLabels[n - 1] ?? null),
+        style: { ...DEFAULT_NUMBERING, ...numbering },
+      };
+      return buildPdf(inputs, entries, { pageNumbers });
     },
-    [sourcesById]
+    [pages, sourcesById, numbering, numberLabels]
   );
 
   /**
@@ -403,14 +421,15 @@ export function DocumentProvider({ children }) {
    * `makeFileName(primaryName, merged)` names the download.
    */
   const runExport = useCallback(
-    async (entries, makeFileName) => {
+    async (positions, makeFileName) => {
+      const entries = positions.map((n) => pages[n - 1]).filter(Boolean);
       if (!primary || entries.length === 0) return false;
       const token = loadTokenRef.current;
       setExporting(true);
       setNotice(null);
       try {
         const usedIds = [...new Set(entries.map((p) => p.sourceId))];
-        const bytes = await buildBytes(entries);
+        const bytes = await buildBytes(positions);
         if (loadTokenRef.current !== token) return false; // document changed meanwhile
         downloadBytes(bytes, makeFileName(primary.name, usedIds.length > 1));
         return true;
@@ -426,7 +445,7 @@ export function DocumentProvider({ children }) {
         if (loadTokenRef.current === token) setExporting(false);
       }
     },
-    [primary, buildBytes]
+    [primary, pages, buildBytes]
   );
 
   /**
@@ -443,7 +462,7 @@ export function DocumentProvider({ children }) {
       setNotice(null);
       setProgress({ done: 0, total: entries.length });
       try {
-        const pdfBytes = await buildBytes(entries);
+        const pdfBytes = await buildBytes(positions);
         const images = await renderPdfToImages(pdfBytes, {
           format,
           dpi,
@@ -482,7 +501,11 @@ export function DocumentProvider({ children }) {
 
   /** Bake the whole page model into a new PDF and download it. */
   const exportDocument = useCallback(
-    () => runExport(pages, (name, merged) => exportFileName(name, { merged })),
+    () =>
+      runExport(
+        pages.map((_, i) => i + 1),
+        (name, merged) => exportFileName(name, { merged })
+      ),
     [runExport, pages]
   );
 
@@ -491,11 +514,8 @@ export function DocumentProvider({ children }) {
    * rotations included) into a new PDF and download it.
    */
   const extractPages = useCallback(
-    (positions) => {
-      const entries = positions.map((n) => pages[n - 1]).filter(Boolean);
-      return runExport(entries, (name) => extractFileName(name, positions));
-    },
-    [runExport, pages]
+    (positions) => runExport(positions, (name) => extractFileName(name, positions)),
+    [runExport]
   );
   const dismissNotice = useCallback(() => setNotice(null), []);
 
@@ -661,6 +681,9 @@ export function DocumentProvider({ children }) {
       exportImages,
       imagesToPdf,
       requestImagesToPdf,
+      numbering,
+      numberLabels,
+      setNumbering,
       dismissNotice,
       tool,
       setTool,
@@ -721,6 +744,9 @@ export function DocumentProvider({ children }) {
       exportImages,
       imagesToPdf,
       requestImagesToPdf,
+      numbering,
+      numberLabels,
+      setNumbering,
       dismissNotice,
       tool,
       setTool,

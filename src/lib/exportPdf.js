@@ -13,6 +13,7 @@ import { formatPageRanges } from './pageRanges.js';
 import { getAnnotations } from './annotations.js';
 import { hexToRgb, textDrawOps } from './textLayout.js';
 import { anchorOf, ownSize } from './ownFrame.js';
+import { pageNumberAnnotation } from './pageNumbering.js';
 
 /** Thrown for PDFs we can't rewrite (e.g. encrypted); `message` is user-facing. */
 export class ExportError extends Error {
@@ -27,9 +28,12 @@ export class ExportError extends Error {
  *   original, unmodified files keyed by sourceId (only those `pages` use are read)
  * @param {{ sourceId: string, sourcePage: number, rotation: number }[]} pages
  *   the page model (or a slice of it), in output order
+ * @param {{ pageNumbers?: { labels: (string|null)[], style: object } }} [options]
+ *   page numbering: a label per output page (null = none) and its style
+ *   (lib/pageNumbering.js)
  * @returns {Promise<Uint8Array>} the new PDF's bytes
  */
-export async function buildPdf(sources, pages) {
+export async function buildPdf(sources, pages, { pageNumbers } = {}) {
   if (!pages.length) throw new ExportError('There are no pages to export.');
 
   const pdfLib = await import('pdf-lib');
@@ -81,6 +85,23 @@ export async function buildPdf(sources, pages) {
     page.setRotation(degrees(effectiveRotation(intrinsic, pages[i].rotation)));
     output.addPage(page);
     await drawAnnotations(page, getAnnotations(pages[i]), embed, pdfLib);
+
+    const label = pageNumbers?.labels?.[i];
+    if (label) {
+      // Measure with the real font so centred/right-aligned numbers are exact.
+      const font = await embed.font(pageNumbers.style.font);
+      const width = font.widthOfTextAtSize(
+        encodable(label, new Set(font.getCharacterSet())),
+        pageNumbers.style.fontSize
+      );
+      const number = pageNumberAnnotation(
+        label,
+        { pageBox: page.getCropBox(), rotation: page.getRotation().angle },
+        pageNumbers.style,
+        width
+      );
+      await drawAnnotations(page, [number], embed, pdfLib);
+    }
   }
 
   return output.save();

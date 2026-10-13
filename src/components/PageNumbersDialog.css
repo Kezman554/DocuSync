@@ -1,0 +1,89 @@
+.page-numbers {
+  margin: -0.5rem 0 1rem;
+}
+
+/* A little page with six spots to pick where the number goes. */
+.page-numbers__positions {
+  position: relative;
+  width: 96px;
+  height: 124px;
+  margin: 0.4rem auto 0.9rem;
+  padding: 0;
+  border: 1px solid #4a4d54;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.page-numbers__positions legend {
+  position: absolute;
+  top: -1.6rem;
+  left: -2.5rem;
+}
+
+.page-numbers__position {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 22px;
+  cursor: pointer;
+}
+
+.page-numbers__position input {
+  position: absolute;
+  opacity: 0;
+}
+
+.page-numbers__position--top-left { top: 4px; left: 4px; }
+.page-numbers__position--top-center { top: 4px; left: 35px; }
+.page-numbers__position--top-right { top: 4px; right: 4px; }
+.page-numbers__position--bottom-left { bottom: 4px; left: 4px; }
+.page-numbers__position--bottom-center { bottom: 4px; left: 35px; }
+.page-numbers__position--bottom-right { bottom: 4px; right: 4px; }
+
+.page-numbers__dot {
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+  background: #c4c8ce;
+}
+
+.page-numbers__position--on .page-numbers__dot {
+  background: #3a82f6;
+}
+
+.page-numbers__position:focus-within {
+  outline: 2px solid #8ab4ff;
+  border-radius: 4px;
+}
+
+.page-numbers__fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem 0.75rem;
+}
+
+.page-numbers__fields .confirm-dialog__label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.page-numbers__fields .confirm-dialog__input {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.page-numbers__check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.85rem;
+  color: #d4d6da;
+}
+
+.page-numbers__remove {
+  margin-top: 0.5rem;
+}

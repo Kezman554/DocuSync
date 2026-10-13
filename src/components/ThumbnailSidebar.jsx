@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import PageThumbnail from './PageThumbnail.jsx';
+import PageNumbersDialog from './PageNumbersDialog.jsx';
 import './ThumbnailSidebar.css';
 
 const DRAG_TYPE = 'application/x-docusync-page';
@@ -20,7 +21,9 @@ function ThumbnailSidebar({ open }) {
     movePages,
     nudgeSelected,
     requestDelete,
+    numbering,
   } = useDocumentContext();
+  const [numbersOpen, setNumbersOpen] = useState(false);
 
   // Callback ref → state so the scroll container can be passed as the
   // IntersectionObserver root once it's mounted.
@@ -156,6 +159,16 @@ function ThumbnailSidebar({ open }) {
           <p id="sidebar-reorder-hint" className="sidebar__hint">
             Drag to reorder · Alt+↑/↓ to move · Del to delete
           </p>
+          <button
+            type="button"
+            className={`sidebar__action${numbering ? ' sidebar__action--on' : ''}`}
+            onClick={() => setNumbersOpen(true)}
+            aria-haspopup="dialog"
+          >
+            Page numbers…
+            {numbering && <span className="sidebar__badge">On</span>}
+          </button>
+          {numbersOpen && <PageNumbersDialog onClose={() => setNumbersOpen(false)} />}
         </div>
       ) : (
         <p className="sidebar__empty">No document open</p>

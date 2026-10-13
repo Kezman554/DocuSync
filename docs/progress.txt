@@ -430,3 +430,32 @@ DocuSync — Progress Log
 - Tests: 268 passing (+12 pure: EXIF, matrices map onto the rect with correct
   handedness, layout, build read back via pdf.js op replay, byte-identical
   JPEG; +5 dialog). Mutation check: ignoring EXIF fails 2.
+
+2026-10-13 — Page numbering
+- src/lib/pageNumbering.js (pure): 5 formats ("1", "Page 1", "Page 1 of 9",
+  "1 / 9", "– 1 –"), 6 positions (top/bottom × left/centre/right), start
+  number (total = last number used), skip-first (cover counted, unnumbered),
+  font/size/colour, 28pt margin. pageNumberAnnotation() turns a label into a
+  text annotation positioned on the page AS DISPLAYED (via coords
+  viewportToPdfPoint + ownFrame) so rotated pages get the number at their
+  visual bottom/top, upright — and textLayout gives identical baselines in
+  preview and export.
+- Export: buildPdf(sources, pages, { pageNumbers: { labels, style } }) draws
+  each label with drawText after the page's annotations, measured with the
+  real font (widthOfTextAtSize) on the page's CropBox at its final rotation.
+- DocumentContext: `numbering` (null = off, reset on open/close),
+  `numberLabels` by position in the whole edited document. buildBytes now
+  takes positions, so Export PDF, Extract pages (numbers keep document
+  positions: an extract of 3–4 reads "3", "4") and Export images all carry
+  the numbers. Reorder/delete renumber automatically.
+- UI: sidebar "Page numbers…" button (badge "On") -> PageNumbersDialog
+  (position picker drawn as a little page, format with live examples, start,
+  skip cover, font, size, summary; Remove). Viewer previews the current
+  page's number (role=note) using the same layout.
+- vitest testTimeout raised to 15s: pdf.js-heavy integration tests could
+  exceed 5s under a full parallel run (one did, once).
+- Tests: 283 passing (+10 pure/export incl. intrinsic & user rotation, A5,
+  cropped box, start/skip, off; +5 UI: format/position preview + exact export
+  positions on every page, renumber after delete, start + skip cover + top,
+  extract keeps document numbers, remove + invalid start). Mutation check:
+  numbering by export index instead of document position fails 1.
