@@ -21,6 +21,7 @@ export function makeFakePdf(name, numPages) {
     numPages,
     getPage: vi.fn(async (pageNumber) => ({
       pageNumber,
+      view: [0, 0, 612, 792], // US Letter, like the viewports below
       rotate: 0, // intrinsic /Rotate of the source page — must never change
       getViewport: ({ scale, rotation = 0 }) => {
         viewportCalls.push({ doc: name, pageNumber, rotation });

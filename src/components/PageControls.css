@@ -59,3 +59,17 @@
   min-width: 3.2rem;
   text-align: center;
 }
+
+.page-controls__btn--tool {
+  font-size: 0.85rem;
+}
+
+.page-controls__btn--active {
+  border-color: #3a82f6;
+  background: #3a82f6;
+  color: #fff;
+}
+
+.page-controls__btn--active:hover:not(:disabled) {
+  background: #2f6fd8;
+}

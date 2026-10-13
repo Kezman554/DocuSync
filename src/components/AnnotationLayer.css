@@ -1,0 +1,100 @@
+/* Sits exactly over the page canvas (same size, top-left aligned). */
+.annotation-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Let touch drags move/resize annotations instead of scrolling. */
+  touch-action: none;
+  outline: none;
+}
+
+.annotation-layer--placing {
+  cursor: crosshair;
+}
+
+.annotation {
+  position: absolute;
+  box-sizing: border-box;
+  cursor: move;
+  outline: none;
+}
+
+.annotation-layer--placing .annotation {
+  cursor: crosshair;
+}
+
+/* Test marker: a translucent highlighter box. */
+.annotation--marker {
+  background: rgba(255, 213, 0, 0.28);
+  border: 2px solid rgba(230, 170, 0, 0.9);
+  border-radius: 3px;
+}
+
+.annotation--selected,
+.annotation:focus-visible {
+  border-color: #3a82f6;
+  box-shadow: 0 0 0 1px #fff, 0 0 0 3px rgba(58, 130, 246, 0.6);
+}
+
+.annotation--draft {
+  background: rgba(58, 130, 246, 0.12);
+  border: 1.5px dashed #3a82f6;
+  pointer-events: none;
+}
+
+.annotation__handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1.5px solid #3a82f6;
+  background: #fff;
+  /* Generous hit area on touch screens. */
+  touch-action: none;
+}
+
+.annotation__handle--nw { top: -7px; left: -7px; cursor: nwse-resize; }
+.annotation__handle--ne { top: -7px; right: -7px; cursor: nesw-resize; }
+.annotation__handle--sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
+.annotation__handle--se { bottom: -7px; right: -7px; cursor: nwse-resize; }
+
+.annotation__delete {
+  position: absolute;
+  top: -12px;
+  right: -30px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #d64545;
+  color: #fff;
+  font-size: 0.95rem;
+  line-height: 22px;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.annotation__delete:hover {
+  background: #bb3838;
+}
+
+.annotation-layer__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (pointer: coarse) {
+  .annotation__handle {
+    width: 20px;
+    height: 20px;
+  }
+  .annotation__handle--nw { top: -11px; left: -11px; }
+  .annotation__handle--ne { top: -11px; right: -11px; }
+  .annotation__handle--sw { bottom: -11px; left: -11px; }
+  .annotation__handle--se { bottom: -11px; right: -11px; }
+}

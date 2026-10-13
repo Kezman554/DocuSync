@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import { effectiveRotation } from '../lib/pageModel.js';
 import EmptyState from './EmptyState.jsx';
 import PageControls from './PageControls.jsx';
+import AnnotationLayer from './AnnotationLayer.jsx';
 import './Viewer.css';
 
 function Viewer() {
@@ -14,6 +15,11 @@ function Viewer() {
   const sourcePage = currentEntry?.sourcePage;
   const rotation = currentEntry?.rotation ?? 0;
 
+  // The loaded page's PDF box and intrinsic /Rotate, which the annotation
+  // layer needs to map between screen and PDF space. Tagged with the page it
+  // belongs to so a stale value is never used while the next page loads.
+  const [geometry, setGeometry] = useState(null);
+
   useEffect(() => {
     if (!pdfDoc || !sourcePage) return undefined;
 
@@ -24,6 +30,11 @@ function Viewer() {
       try {
         const page = await pdfDoc.getPage(sourcePage);
         if (cancelled) return;
+        setGeometry((prev) =>
+          prev?.pdfDoc === pdfDoc && prev.sourcePage === sourcePage
+            ? prev
+            : { pdfDoc, sourcePage, view: page.view, rotate: page.rotate || 0 }
+        );
 
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -35,11 +46,12 @@ function Viewer() {
         });
         const ctx = canvas.getContext('2d');
 
-        // Backing store at device resolution for crisp output; CSS size in CSS px.
+        // Backing store at device resolution for crisp output. The CSS size is
+        // exact (not floored) so the annotation layer lines up precisely.
         canvas.width = Math.floor(viewport.width * dpr);
         canvas.height = Math.floor(viewport.height * dpr);
-        canvas.style.width = `${Math.floor(viewport.width)}px`;
-        canvas.style.height = `${Math.floor(viewport.height)}px`;
+        canvas.style.width = `${viewport.width}px`;
+        canvas.style.height = `${viewport.height}px`;
 
         renderTask = page.render({
           canvasContext: ctx,
@@ -82,11 +94,22 @@ function Viewer() {
   return (
     <section className="viewer" aria-label="Document viewer">
       <div className="viewer__scroll">
-        <canvas
-          ref={canvasRef}
-          className="viewer__canvas"
-          aria-label={`Page ${currentPage}`}
-        />
+        <div className="viewer__page">
+          <canvas
+            ref={canvasRef}
+            className="viewer__canvas"
+            aria-label={`Page ${currentPage}`}
+          />
+          {geometry?.pdfDoc === pdfDoc && geometry.sourcePage === sourcePage && (
+            <AnnotationLayer
+              entry={currentEntry}
+              pageNumber={currentPage}
+              view={geometry.view}
+              intrinsicRotate={geometry.rotate}
+              scale={scale}
+            />
+          )}
+        </div>
       </div>
       <PageControls />
     </section>

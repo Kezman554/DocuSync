@@ -23,12 +23,20 @@
   padding: 1.5rem;
 }
 
-.viewer__canvas {
-  background: #fff;
-  border-radius: 2px;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.4);
+/* Canvas + annotation layer, stacked exactly on top of each other. */
+.viewer__page {
+  position: relative;
+  flex: 0 0 auto;
   /* Center small pages but allow large ones to scroll. */
   margin: auto;
+  border-radius: 2px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.4);
+}
+
+.viewer__canvas {
+  display: block;
+  background: #fff;
+  border-radius: 2px;
 }
 
 .viewer__status {

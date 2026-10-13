@@ -14,6 +14,8 @@ function PageControls() {
     rotateLeft,
     rotateRight,
     requestDelete,
+    tool,
+    setTool,
     zoomIn,
     zoomOut,
   } = useDocumentContext();
@@ -82,6 +84,21 @@ function PageControls() {
             {targetCount} pages
           </span>
         )}
+      </div>
+
+      <div className="page-controls__group">
+        <button
+          type="button"
+          className={`page-controls__btn page-controls__btn--tool${
+            tool === 'marker' ? ' page-controls__btn--active' : ''
+          }`}
+          onClick={() => setTool(tool === 'marker' ? 'select' : 'marker')}
+          aria-pressed={tool === 'marker'}
+          aria-label="Place marker"
+          title="Place marker — click the page, or drag to draw (Esc cancels)"
+        >
+          ▭ Marker
+        </button>
       </div>
 
       <div className="page-controls__group">

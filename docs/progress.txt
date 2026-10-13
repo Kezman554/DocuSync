@@ -174,3 +174,29 @@ DocuSync — Progress Log
   (convertToViewportPoint / convertToPdfPoint) — so mapping matches what the
   preview renders. Mutation check: breaking the 90° case fails 10 tests.
 - Not wired into UI yet (for text/image/signature placement sessions).
+
+2026-10-13 — Annotation overlay
+- src/lib/annotations.js (pure): annotations live on page entries
+  (entry.annotations, absent = none) as { id, type: 'marker', rect } in the
+  SOURCE page's PDF space — so they follow reorder/rotate/merge/delete for
+  free and are zoom-independent. add/update/remove/findAnnotation, plus
+  viewport geometry: moveRect / resizeRect (corner handles, min 12px, page
+  bounds) / rectFromPoints / rectCenteredAt / clampRectToBounds.
+- AnnotationLayer.jsx over the canvas (Viewer wraps both in .viewer__page;
+  canvas CSS size now exact, not floored). Viewer records pdf.js page.view +
+  intrinsic rotate per page; layer builds the coords.js view (box, zoom,
+  total rotation). All edits happen in px and convert straight back with
+  viewportToPdfRect; rendering uses pdfToViewportRect.
+- Interactions: Marker tool (page controls, one-shot): click = default
+  120x48pt marker centred on the pointer, drag = drawn rect. Select by
+  click/focus, drag to move, 4 corner handles to resize (pointer capture,
+  touch-action none, bigger handles on coarse pointers), × button / Delete
+  to remove, arrows nudge 1pt (Shift 10pt), Esc deselects / cancels tool.
+- Context: tool, selectedAnnotationId, add/updateAnnotationRect/delete.
+- Tests: 128 passing (+9 annotations lib, +8 layer UI): marker anchored at
+  100/125/150/50% zoom and back, survives page changes, follows rotation
+  (90° mapping) and reorder, drag move + clamp, keyboard nudge in points,
+  resize stored in points, drag-to-draw, deselect/delete, Esc. Mutation
+  check: ignoring zoom in the layer fails 2 tests.
+- Not yet baked into export (markers are a test annotation type; text/image/
+  signature sessions will add real types + export).

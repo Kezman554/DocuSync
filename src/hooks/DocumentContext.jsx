@@ -28,6 +28,12 @@ import {
   extractFileName,
 } from '../lib/exportPdf.js';
 import { downloadBytes } from '../lib/download.js';
+import {
+  addAnnotation as addAnnotationModel,
+  newAnnotationId,
+  removeAnnotation as removeAnnotationModel,
+  updateAnnotation as updateAnnotationModel,
+} from '../lib/annotations.js';
 
 /**
  * Shared application state for the loaded PDFs, page model, selection, and zoom.
@@ -66,6 +72,8 @@ export function DocumentProvider({ children }) {
   const [adding, setAdding] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState(null); // dismissible error message
+  const [tool, setTool] = useState('select'); // select | marker
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState(null);
 
   // Track the most recent open/close so a slow load can't clobber a newer one.
   const loadTokenRef = useRef(0);
@@ -106,6 +114,8 @@ export function DocumentProvider({ children }) {
     setAdding(false);
     setExporting(false);
     setNotice(null);
+    setTool('select');
+    setSelectedAnnotationId(null);
   }, []);
 
   /**
@@ -153,6 +163,8 @@ export function DocumentProvider({ children }) {
 
       sourcesRef.current.forEach((src) => src.pdfDoc?.destroy?.());
       setPendingDelete(null);
+      setTool('select');
+      setSelectedAnnotationId(null);
       setAdding(false);
       setExporting(false);
       setScale(DEFAULT_SCALE);
@@ -382,6 +394,28 @@ export function DocumentProvider({ children }) {
   );
   const dismissNotice = useCallback(() => setNotice(null), []);
 
+  // --- Annotations (stored on page entries; see lib/annotations.js) -------
+
+  /** Add an annotation anchored at `rect` (PDF space of the page's source). */
+  const addAnnotation = useCallback((pageId, rect, type = 'marker') => {
+    const id = newAnnotationId();
+    setPages((prev) => addAnnotationModel(prev, pageId, { id, type, rect }));
+    setSelectedAnnotationId(id);
+    return id;
+  }, []);
+
+  const updateAnnotationRect = useCallback(
+    (id, rect) => setPages((prev) => updateAnnotationModel(prev, id, { rect })),
+    []
+  );
+
+  const deleteAnnotation = useCallback((id) => {
+    setPages((prev) => removeAnnotationModel(prev, id));
+    setSelectedAnnotationId((current) => (current === id ? null : current));
+  }, []);
+
+  const selectAnnotation = useCallback((id) => setSelectedAnnotationId(id), []);
+
   const zoomIn = useCallback(() => setScale((s) => zoomInScale(s)), []);
   const zoomOut = useCallback(() => setScale((s) => zoomOutScale(s)), []);
   const resetZoom = useCallback(() => setScale(DEFAULT_SCALE), []);
@@ -425,6 +459,13 @@ export function DocumentProvider({ children }) {
       exportDocument,
       extractPages,
       dismissNotice,
+      tool,
+      setTool,
+      selectedAnnotationId,
+      selectAnnotation,
+      addAnnotation,
+      updateAnnotationRect,
+      deleteAnnotation,
       zoomIn,
       zoomOut,
       resetZoom,
@@ -464,6 +505,13 @@ export function DocumentProvider({ children }) {
       exportDocument,
       extractPages,
       dismissNotice,
+      tool,
+      setTool,
+      selectedAnnotationId,
+      selectAnnotation,
+      addAnnotation,
+      updateAnnotationRect,
+      deleteAnnotation,
       zoomIn,
       zoomOut,
       resetZoom,
