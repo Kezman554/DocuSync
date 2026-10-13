@@ -43,6 +43,7 @@ import {
   topLeftOf,
 } from '../lib/textLayout.js';
 import { measureTextWidth } from '../lib/measureText.js';
+import { sniffImage } from '../lib/imageInfo.js';
 
 /**
  * Shared application state for the loaded PDFs, page model, selection, and zoom.
@@ -81,7 +82,9 @@ export function DocumentProvider({ children }) {
   const [adding, setAdding] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState(null); // dismissible error message
-  const [tool, setTool] = useState('select'); // select | marker | text
+  const [tool, setToolState] = useState('select'); // select | marker | text | image
+  // Image chosen with "Add image", waiting to be placed with the image tool.
+  const [pendingImage, setPendingImage] = useState(null);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState(null);
   const [editingAnnotationId, setEditingAnnotationId] = useState(null);
   // Style for the next text box; also updated when a text box is restyled.
@@ -93,6 +96,19 @@ export function DocumentProvider({ children }) {
   // Latest committed values, for async actions that finish later.
   const pagesRef = useRef(pages);
   pagesRef.current = pages;
+  // Object URLs for image previews, revoked when the document is closed.
+  const imageUrlsRef = useRef(new Set());
+
+  const revokeImageUrls = useCallback(() => {
+    imageUrlsRef.current.forEach((url) => URL.revokeObjectURL?.(url));
+    imageUrlsRef.current.clear();
+  }, []);
+
+  /** Switch tool; leaving the image tool drops the image waiting to be placed. */
+  const setTool = useCallback((next) => {
+    setToolState(next);
+    if (next !== 'image') setPendingImage(null);
+  }, []);
   const sourcesRef = useRef(sources);
   sourcesRef.current = sources;
 
@@ -129,7 +145,8 @@ export function DocumentProvider({ children }) {
     setTool('select');
     setSelectedAnnotationId(null);
     setEditingAnnotationId(null);
-  }, []);
+    revokeImageUrls();
+  }, [setTool, revokeImageUrls]);
 
   /**
    * Load `files` with pdf.js, giving each a new source id. Files that fail
@@ -179,6 +196,7 @@ export function DocumentProvider({ children }) {
       setTool('select');
       setSelectedAnnotationId(null);
       setEditingAnnotationId(null);
+      revokeImageUrls();
       setAdding(false);
       setExporting(false);
       setScale(DEFAULT_SCALE);
@@ -203,7 +221,7 @@ export function DocumentProvider({ children }) {
       setNotice(failures.length ? describeFailures(failures) : null);
       setStatus('ready');
     },
-    [loadSources]
+    [loadSources, setTool, revokeImageUrls]
   );
 
   const openDocument = useCallback(
@@ -452,6 +470,32 @@ export function DocumentProvider({ children }) {
 
   const selectAnnotation = useCallback((id) => setSelectedAnnotationId(id), []);
 
+  /**
+   * Read a PNG/JPG for placement: check it by content, then arm the image
+   * tool with it. Resolves false (with a notice) for anything else.
+   */
+  const loadImageFile = useCallback(
+    async (file) => {
+      if (!file) return false;
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const info = sniffImage(bytes);
+      if (!info) {
+        setNotice(`“${file.name}” isn’t a PNG or JPG image, so it can’t be placed.`);
+        return false;
+      }
+      let url;
+      if (typeof URL.createObjectURL === 'function') {
+        url = URL.createObjectURL(new Blob([bytes], { type: info.mime }));
+        imageUrlsRef.current.add(url);
+      }
+      setNotice(null);
+      setPendingImage({ id: newAnnotationId(), name: file.name, bytes, url, ...info });
+      setTool('image');
+      return true;
+    },
+    [setTool]
+  );
+
   const zoomIn = useCallback(() => setScale((s) => zoomInScale(s)), []);
   const zoomOut = useCallback(() => setScale((s) => zoomOutScale(s)), []);
   const resetZoom = useCallback(() => setScale(DEFAULT_SCALE), []);
@@ -497,6 +541,8 @@ export function DocumentProvider({ children }) {
       dismissNotice,
       tool,
       setTool,
+      pendingImage,
+      loadImageFile,
       selectedAnnotationId,
       selectAnnotation,
       addAnnotation,
@@ -548,6 +594,8 @@ export function DocumentProvider({ children }) {
       dismissNotice,
       tool,
       setTool,
+      pendingImage,
+      loadImageFile,
       selectedAnnotationId,
       selectAnnotation,
       addAnnotation,

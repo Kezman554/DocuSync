@@ -7,7 +7,12 @@
  * Each one is anchored in the SOURCE page's PDF user space (bottom-left
  * origin, points) — independent of zoom and of the page's display rotation:
  *
- *   { id: string, type: 'marker', rect: { x, y, width, height } }
+ *   { id: string, type: 'marker' | 'text' | 'image', rect: { x, y, width, height }, … }
+ *
+ * Text adds its content/style (lib/textLayout.js). Images add
+ *   { rotate, image: { id, bytes, mime, width, height, url } }
+ * where `rotate` is the orientation fixed at placement (see ownFrame.js),
+ * `image.width/height` are pixels and `url` is an object URL for preview.
  *
  * Conversion to/from the screen is done with lib/coords.js.
  */
@@ -136,4 +141,36 @@ export function rectCenteredAt(point, size, bounds) {
     },
     bounds
   );
+}
+
+/**
+ * Like resizeRect, but keeps the rect's aspect ratio (for images). The
+ * opposite corner stays put; the size follows whichever axis was dragged
+ * further, limited by `minSize` and by the page edges.
+ */
+export function resizeRectLocked(rect, handle, dx, dy, bounds, minSize = MIN_SIZE_PX) {
+  const sx = handle.includes('e') ? 1 : -1; // which way the moving corner grows
+  const sy = handle.includes('s') ? 1 : -1;
+  const fixedX = sx > 0 ? rect.x : rect.x + rect.width;
+  const fixedY = sy > 0 ? rect.y : rect.y + rect.height;
+
+  // Proposed scale: the larger relative change of the two axes.
+  const scaleX = (rect.width + sx * dx) / rect.width;
+  const scaleY = (rect.height + sy * dy) / rect.height;
+  let scale = Math.max(scaleX, scaleY);
+
+  const minScale = Math.max(minSize / rect.width, minSize / rect.height);
+  const roomX = sx > 0 ? bounds.width - fixedX : fixedX;
+  const roomY = sy > 0 ? bounds.height - fixedY : fixedY;
+  const maxScale = Math.min(roomX / rect.width, roomY / rect.height);
+  scale = clamp(scale, Math.min(minScale, maxScale), maxScale);
+
+  const width = rect.width * scale;
+  const height = rect.height * scale;
+  return {
+    x: sx > 0 ? fixedX : fixedX - width,
+    y: sy > 0 ? fixedY : fixedY - height,
+    width,
+    height,
+  };
 }

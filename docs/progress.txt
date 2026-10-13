@@ -229,3 +229,32 @@ DocuSync — Progress Log
   rotated page (rotated matrix), page rotated after placing, drag move,
   re-edit, empty discard, emoji fallback. Mutation check: dropping text
   rotation in export fails 2 tests.
+
+2026-10-13 — Image annotations
+- src/lib/imageInfo.js (pure): sniffImage(bytes) identifies PNG/JPEG by
+  content (not name) and reads pixel size from the PNG IHDR / JPEG SOF
+  header (baseline + progressive); rejects GIF/WebP/SVG/truncated data.
+  defaultImageSize: 1px = 1pt, shrunk to fit 40% of the page as shown.
+- src/lib/ownFrame.js: own-frame helpers moved out of textLayout.js (still
+  re-exported there) — shared by text and images.
+- annotations.js: resizeRectLocked (aspect-locked corner scaling, opposite
+  corner fixed, min size, page edges). Image annotation = { type:'image',
+  rotate (orientation at placement, like text), rect, image: { id, bytes,
+  mime, width, height, url, name } }.
+- exportPdf: drawImage at anchorOf(rect, rotate) with ownSize and rotate;
+  each image embedded once per document (cache by image.id); embedPng keeps
+  alpha (SMask). Embed failure -> ExportError.
+- UI: "🖼 Image" in page controls opens a PNG/JPG picker; loadImageFile
+  checks bytes, arms the one-shot image tool (non-images -> notice). Click
+  places at default size centred, drag sizes it (aspect locked). Selected
+  images move (drag/arrows), scale proportionally from 4 corner handles,
+  delete (× / Delete). Preview <img> uses image-orientation: none so EXIF
+  rotation doesn't make the preview disagree with the PDF. Object URLs
+  revoked on close/open. Page controls bar now wraps on narrow screens.
+- Tests: 177 passing. Fixtures (Pillow-generated, tiny) in tests/fixtures.
+  Export placement verified by replaying pdf.js's operator list to get the
+  matrix mapping each image's unit square onto the page: click default size,
+  drag-to-size, handle scaling, move + zoom, upright on a rotated page
+  (rotated matrix), page rotated afterwards, 180/270, dedupe, PNG alpha;
+  GIF rejected by content. Mutation check: using bounds instead of own size
+  in export fails 3 tests.

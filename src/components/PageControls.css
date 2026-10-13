@@ -5,8 +5,11 @@
   transform: translateX(-50%);
   z-index: 10;
   display: flex;
+  flex-wrap: wrap; /* many tools: wrap rather than overflow on narrow screens */
+  justify-content: center;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem 1rem;
+  max-width: calc(100% - 1rem);
   padding: 0.4rem 0.6rem;
   border-radius: 10px;
   background: rgba(38, 40, 45, 0.95);
@@ -72,4 +75,8 @@
 
 .page-controls__btn--active:hover:not(:disabled) {
   background: #2f6fd8;
+}
+
+.page-controls__file-input {
+  display: none;
 }

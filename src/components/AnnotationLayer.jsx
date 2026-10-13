@@ -2,12 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import {
   DEFAULT_MARKER_SIZE,
+  clampRectToBounds,
   getAnnotations,
   moveRect,
   rectCenteredAt,
   rectFromPoints,
   resizeRect,
+  resizeRectLocked,
 } from '../lib/annotations.js';
+import { defaultImageSize } from '../lib/imageInfo.js';
 import {
   normalizeQuarterTurn,
   pageBoxFromView,
@@ -34,9 +37,47 @@ const CLICK_SLOP = 4;
 const HINTS = {
   marker: 'Click to place a marker, or drag to draw one. Escape cancels.',
   text: 'Click where the text should start, then type. Escape cancels.',
+  image: 'Click to place the image, or drag to size it. Escape cancels.',
   select:
     'Select an annotation to move it with the arrow keys or delete it. Press Enter to edit text.',
 };
+
+/**
+ * Turn and centre content laid out in its own (unrotated) frame so it sits
+ * in its on-screen bounds: by however much the page has been rotated since
+ * the content was placed (upright at the time).
+ */
+function ownFrameStyle(annotation, boxPx, scale, pageRotation) {
+  const own = ownSize(annotation.rect, annotation.rotate);
+  const width = own.width * scale;
+  const height = own.height * scale;
+  const turn = normalizeQuarterTurn(pageRotation - annotation.rotate);
+  return {
+    turn,
+    style: {
+      left: `${(boxPx.width - width) / 2}px`,
+      top: `${(boxPx.height - height) / 2}px`,
+      width: `${width}px`,
+      height: `${height}px`,
+      transform: turn ? `rotate(${turn}deg)` : undefined,
+    },
+  };
+}
+
+/** Image annotation: the picture in its own frame, turned with the page. */
+function ImageContent({ annotation, boxPx, scale, pageRotation }) {
+  const { turn, style } = ownFrameStyle(annotation, boxPx, scale, pageRotation);
+  return (
+    <div className="annotation__content" style={style} data-turn={turn}>
+      <img
+        className="annotation__image"
+        src={annotation.image.url}
+        alt=""
+        draggable={false}
+      />
+    </div>
+  );
+}
 
 /**
  * Text annotation contents, drawn in its own (unrotated) frame and turned to
@@ -49,17 +90,7 @@ function TextContent({ annotation, boxPx, scale, pageRotation, editing, onChange
   const font = STANDARD_FONTS[annotation.font] ?? STANDARD_FONTS.Helvetica;
   const width = own.width * scale;
   const height = own.height * scale;
-  // The text was laid out upright for the page's rotation at the time; turn
-  // it by however much the page has been rotated since.
-  const turn = normalizeQuarterTurn(pageRotation - annotation.rotate);
-
-  const style = {
-    left: `${(boxPx.width - width) / 2}px`,
-    top: `${(boxPx.height - height) / 2}px`,
-    width: `${width}px`,
-    height: `${height}px`,
-    transform: turn ? `rotate(${turn}deg)` : undefined,
-  };
+  const { turn, style } = ownFrameStyle(annotation, boxPx, scale, pageRotation);
 
   return (
     <div className="annotation__content" style={style} data-turn={turn}>
@@ -135,6 +166,7 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
     editingAnnotationId,
     setEditingAnnotationId,
     textStyle,
+    pendingImage,
   } = useDocumentContext();
 
   const view = useMemo(
@@ -194,11 +226,50 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
     setEditingAnnotationId(id);
   };
 
+  // Rect from the drag start towards `p`, locked to `ratio` (width / height).
+  const lockedDraft = (start, p, ratio) => {
+    const dx = p.x - start.x;
+    const dy = p.y - start.y;
+    let width = Math.abs(dx);
+    let height = Math.abs(dy);
+    if (width / ratio > height) height = width / ratio;
+    else width = height * ratio;
+    return clampRectToBounds(
+      {
+        x: dx < 0 ? start.x - width : start.x,
+        y: dy < 0 ? start.y - height : start.y,
+        width,
+        height,
+      },
+      bounds
+    );
+  };
+
+  const placeImage = (start, drawn) => {
+    const image = pendingImage;
+    // Default: 1px = 1pt, shrunk to fit 40% of the page as displayed.
+    const size = defaultImageSize(image, {
+      width: bounds.width / scale,
+      height: bounds.height / scale,
+    });
+    const rectPx =
+      drawn && drawn.width >= CLICK_SLOP
+        ? drawn
+        : rectCenteredAt(start, { width: size.width * scale, height: size.height * scale }, bounds);
+    addAnnotation(entry.id, {
+      type: 'image',
+      rotate: view.rotation, // upright as the page is shown now
+      rect: viewportToPdfRect(rectPx, view),
+      image,
+    });
+  };
+
   const handleLayerPointerDown = (event) => {
-    if (tool === 'marker' || tool === 'text') {
-      startGesture(event, { kind: tool === 'marker' ? 'draw' : 'text' });
+    const placing = { marker: 'draw', text: 'text', image: pendingImage ? 'image' : null }[tool];
+    if (placing) {
+      startGesture(event, { kind: placing });
       const p = dragRef.current?.start;
-      if (p && tool === 'marker') setDraft({ x: p.x, y: p.y, width: 0, height: 0 });
+      if (p && placing !== 'text') setDraft({ x: p.x, y: p.y, width: 0, height: 0 });
     } else {
       selectAnnotation(null);
     }
@@ -212,7 +283,13 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
   };
 
   const handleResizePointerDown = (event, annotation, rectPx, handle) => {
-    startGesture(event, { kind: 'resize', id: annotation.id, rect: rectPx, handle });
+    startGesture(event, {
+      kind: 'resize',
+      id: annotation.id,
+      rect: rectPx,
+      handle,
+      locked: annotation.type === 'image', // images scale proportionally
+    });
   };
 
   const handlePointerMove = (event) => {
@@ -223,8 +300,12 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
     const dy = p.y - drag.start.y;
     if (drag.kind === 'move') commit(drag.id, moveRect(drag.rect, dx, dy, bounds));
     else if (drag.kind === 'resize') {
-      commit(drag.id, resizeRect(drag.rect, drag.handle, dx, dy, bounds));
+      const resize = drag.locked ? resizeRectLocked : resizeRect;
+      commit(drag.id, resize(drag.rect, drag.handle, dx, dy, bounds));
     } else if (drag.kind === 'draw') setDraft(rectFromPoints(drag.start, p));
+    else if (drag.kind === 'image') {
+      setDraft(lockedDraft(drag.start, p, pendingImage.width / pendingImage.height));
+    }
   };
 
   const endGesture = (event, cancelled = false) => {
@@ -237,6 +318,13 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
     }
     if (drag.kind === 'text') {
       placeText(drag.start);
+      setTool('select');
+      return;
+    }
+    if (drag.kind === 'image') {
+      setDraft(null);
+      const end = localPoint(event);
+      placeImage(drag.start, lockedDraft(drag.start, end, pendingImage.width / pendingImage.height));
       setTool('select');
       return;
     }
@@ -299,7 +387,8 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
     }
   };
 
-  const counts = { marker: 0, text: 0 };
+  const counts = { marker: 0, text: 0, image: 0 };
+  const NAMES = { marker: 'Marker', text: 'Text', image: 'Image' };
 
   return (
     <div
@@ -328,10 +417,11 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
         const editing = annotation.id === editingAnnotationId;
         const isText = annotation.type === 'text';
         counts[annotation.type] = (counts[annotation.type] ?? 0) + 1;
-        const label = isText
-          ? `Text ${counts.text}${annotation.text ? `: ${annotation.text}` : ''}`
-          : `Marker ${counts.marker}`;
-        const shortLabel = isText ? `text ${counts.text}` : `marker ${counts.marker}`;
+        const n = counts[annotation.type];
+        const name = NAMES[annotation.type] ?? 'Annotation';
+        const label =
+          isText && annotation.text ? `${name} ${n}: ${annotation.text}` : `${name} ${n}`;
+        const shortLabel = `${name.toLowerCase()} ${n}`;
         return (
           <div
             key={annotation.id}
@@ -371,9 +461,17 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
                 onDone={() => finishEditing(annotation)}
               />
             )}
+            {annotation.type === 'image' && (
+              <ImageContent
+                annotation={annotation}
+                boxPx={rectPx}
+                scale={scale}
+                pageRotation={view.rotation}
+              />
+            )}
             {selected && !editing && (
               <>
-                {/* Text is sized by its font size, so only markers resize. */}
+                {/* Text is sized by its font size; markers and images resize. */}
                 {!isText &&
                   HANDLES.map((handle) => (
                     <span

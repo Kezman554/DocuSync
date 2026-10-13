@@ -152,3 +152,29 @@
   overflow: hidden;
   white-space: pre;
 }
+
+/* Images: just the picture; outline when hovered or selected. */
+.annotation--image {
+  border: 1px solid transparent;
+}
+
+.annotation--image:hover {
+  border-color: rgba(58, 130, 246, 0.6);
+}
+
+.annotation--image.annotation--selected,
+.annotation--image:focus-visible {
+  border-color: #3a82f6;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);
+}
+
+.annotation__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* The PDF ignores EXIF orientation, so the preview must too — otherwise a
+     phone photo would look upright here but export sideways. */
+  image-orientation: none;
+  pointer-events: none;
+  user-select: none;
+}

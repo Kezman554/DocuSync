@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import { formatZoom, MIN_SCALE, MAX_SCALE } from '../lib/zoom.js';
 import './PageControls.css';
@@ -16,9 +17,12 @@ function PageControls() {
     requestDelete,
     tool,
     setTool,
+    pendingImage,
+    loadImageFile,
     zoomIn,
     zoomOut,
   } = useDocumentContext();
+  const imageInputRef = useRef(null);
   const targetCount = Math.max(selected.size, 1);
   const targetLabel = targetCount > 1 ? `${targetCount} pages` : 'page';
 
@@ -111,6 +115,36 @@ function PageControls() {
         >
           T Text
         </button>
+        <button
+          type="button"
+          className={`page-controls__btn page-controls__btn--tool${
+            tool === 'image' ? ' page-controls__btn--active' : ''
+          }`}
+          onClick={() =>
+            tool === 'image' ? setTool('select') : imageInputRef.current?.click()
+          }
+          aria-pressed={tool === 'image'}
+          aria-label="Add image"
+          title={
+            tool === 'image' && pendingImage
+              ? `Place ${pendingImage.name} — click the page, or drag to size it (Esc cancels)`
+              : 'Add a PNG or JPG image'
+          }
+        >
+          🖼 Image
+        </button>
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/png,image/jpeg,.png,.jpg,.jpeg"
+          className="page-controls__file-input"
+          aria-label="Choose image"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = ''; // allow choosing the same file again
+            loadImageFile(file);
+          }}
+        />
       </div>
 
       <div className="page-controls__group">

@@ -4,7 +4,7 @@
  * Pages are copied as PDF objects (content streams, fonts, resources), never
  * rasterised, so text stays selectable and vector content stays sharp. The
  * page order and each page's /Rotate change, and annotations are drawn on top
- * (text as real, selectable text via drawText).
+ * (text as real, selectable text via drawText; images via drawImage).
  *
  * pdf-lib is imported lazily so it's only loaded when the user exports.
  */
@@ -12,6 +12,7 @@ import { effectiveRotation } from './pageModel.js';
 import { formatPageRanges } from './pageRanges.js';
 import { getAnnotations } from './annotations.js';
 import { hexToRgb, textDrawOps } from './textLayout.js';
+import { anchorOf, ownSize } from './ownFrame.js';
 
 /** Thrown for PDFs we can't rewrite (e.g. encrypted); `message` is user-facing. */
 export class ExportError extends Error {
@@ -74,12 +75,12 @@ export async function buildPdf(sources, pages) {
     });
   }
 
-  const embedFont = fontEmbedder(output, pdfLib);
+  const embed = { font: fontEmbedder(output, pdfLib), image: imageEmbedder(output) };
   for (const [i, page] of placed.entries()) {
     const intrinsic = page.getRotation().angle;
     page.setRotation(degrees(effectiveRotation(intrinsic, pages[i].rotation)));
     output.addPage(page);
-    await drawAnnotations(page, getAnnotations(pages[i]), embedFont, pdfLib);
+    await drawAnnotations(page, getAnnotations(pages[i]), embed, pdfLib);
   }
 
   return output.save();
@@ -95,15 +96,42 @@ function fontEmbedder(output, { StandardFonts }) {
   };
 }
 
+/** Embed each image (by id) at most once, however many times it's placed. */
+function imageEmbedder(output) {
+  const cache = new Map();
+  return (image) => {
+    if (!cache.has(image.id)) {
+      const embed = image.mime === 'image/png' ? output.embedPng : output.embedJpg;
+      cache.set(
+        image.id,
+        embed.call(output, image.bytes).catch((err) => {
+          throw new ExportError('One of the placed images couldn’t be embedded.', {
+            cause: err,
+          });
+        })
+      );
+    }
+    return cache.get(image.id);
+  };
+}
+
 /**
  * Draw annotations onto a copied page. Annotation coordinates are in the
  * source page's PDF space, which the copied page keeps. Markers are an
  * on-screen test type and aren't exported.
  */
-async function drawAnnotations(page, annotations, embedFont, { degrees, rgb }) {
+async function drawAnnotations(page, annotations, embed, { degrees, rgb }) {
   for (const annotation of annotations) {
+    if (annotation.type === 'image') {
+      // Same own-frame placement as text: bottom-left anchor + rotation.
+      const image = await embed.image(annotation.image);
+      const { x, y } = anchorOf(annotation.rect, annotation.rotate);
+      const { width, height } = ownSize(annotation.rect, annotation.rotate);
+      page.drawImage(image, { x, y, width, height, rotate: degrees(annotation.rotate) });
+      continue;
+    }
     if (annotation.type !== 'text' || !annotation.text?.trim()) continue;
-    const font = await embedFont(annotation.font);
+    const font = await embed.font(annotation.font);
     const { r, g, b } = hexToRgb(annotation.color);
     const supported = new Set(font.getCharacterSet());
     for (const op of textDrawOps(annotation)) {
