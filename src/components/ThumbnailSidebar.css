@@ -48,6 +48,16 @@
   color: #e6e6e6;
 }
 
+/* Part of a multi-page selection (Ctrl/Shift-click); rotate acts on these. */
+.sidebar__thumb--selected {
+  background: rgba(58, 130, 246, 0.18);
+  color: #e6e6e6;
+}
+
+.sidebar__thumb--selected:hover {
+  background: rgba(58, 130, 246, 0.26);
+}
+
 /* Stable-sized placeholder so the list height (and lazy observer geometry)
    doesn't jump before a page has rendered. */
 .sidebar__thumb-preview {

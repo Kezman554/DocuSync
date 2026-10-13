@@ -4,7 +4,7 @@ import PageThumbnail from './PageThumbnail.jsx';
 import './ThumbnailSidebar.css';
 
 function ThumbnailSidebar({ open }) {
-  const { hasDocument, pdfDoc, numPages, currentPage, goToPage } =
+  const { hasDocument, pdfDoc, pages, currentPage, selected, selectPage } =
     useDocumentContext();
 
   // Callback ref → state so the scroll container can be passed as the
@@ -19,13 +19,21 @@ function ThumbnailSidebar({ open }) {
       {hasDocument ? (
         <div className="sidebar__scroll" ref={setScrollEl}>
           <ol className="sidebar__list">
-            {Array.from({ length: numPages }, (_, i) => i + 1).map((page) => (
-              <li key={page}>
+            {pages.map((entry, index) => (
+              <li key={entry.id}>
                 <PageThumbnail
                   pdfDoc={pdfDoc}
-                  pageNumber={page}
-                  active={page === currentPage}
-                  onSelect={() => goToPage(page)}
+                  sourcePage={entry.sourcePage}
+                  rotation={entry.rotation}
+                  label={index + 1}
+                  active={index + 1 === currentPage}
+                  selected={selected.has(entry.id)}
+                  onSelect={(event) =>
+                    selectPage(entry.id, {
+                      toggle: event.ctrlKey || event.metaKey,
+                      range: event.shiftKey,
+                    })
+                  }
                   root={scrollEl}
                 />
               </li>

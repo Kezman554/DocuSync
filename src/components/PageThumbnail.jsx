@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useInView } from '../hooks/useInView.js';
+import { effectiveRotation } from '../lib/pageModel.js';
 
 const THUMB_WIDTH = 140; // CSS px
 
@@ -8,7 +9,16 @@ const THUMB_WIDTH = 140; // CSS px
  * near view (lazy), so opening a long document doesn't render every page up
  * front. Clicking selects the page; the active thumbnail scrolls into view.
  */
-function PageThumbnail({ pdfDoc, pageNumber, active, onSelect, root }) {
+function PageThumbnail({
+  pdfDoc,
+  sourcePage,
+  rotation,
+  label,
+  active,
+  selected,
+  onSelect,
+  root,
+}) {
   const [ref, inView] = useInView({ root, rootMargin: '300px 0px' });
   const canvasRef = useRef(null);
   const [rendered, setRendered] = useState(false);
@@ -21,12 +31,14 @@ function PageThumbnail({ pdfDoc, pageNumber, active, onSelect, root }) {
 
     (async () => {
       try {
-        const page = await pdfDoc.getPage(pageNumber);
+        const page = await pdfDoc.getPage(sourcePage);
         if (cancelled) return;
 
-        const base = page.getViewport({ scale: 1 });
+        // Fixed width, so a page rotated to landscape becomes a shorter thumb.
+        const pageRotation = effectiveRotation(page.rotate, rotation);
+        const base = page.getViewport({ scale: 1, rotation: pageRotation });
         const scale = THUMB_WIDTH / base.width;
-        const viewport = page.getViewport({ scale });
+        const viewport = page.getViewport({ scale, rotation: pageRotation });
         const canvas = canvasRef.current;
         if (!canvas) return;
 
@@ -47,7 +59,7 @@ function PageThumbnail({ pdfDoc, pageNumber, active, onSelect, root }) {
       } catch (err) {
         if (err?.name !== 'RenderingCancelledException' && !cancelled) {
           // eslint-disable-next-line no-console
-          console.error(`Failed to render thumbnail ${pageNumber}`, err);
+          console.error(`Failed to render thumbnail ${label}`, err);
         }
       }
     })();
@@ -56,7 +68,7 @@ function PageThumbnail({ pdfDoc, pageNumber, active, onSelect, root }) {
       cancelled = true;
       renderTask?.cancel();
     };
-  }, [inView, pdfDoc, pageNumber]);
+  }, [inView, pdfDoc, sourcePage, rotation, label]);
 
   // Keep the selected page visible in the sidebar when navigated elsewhere.
   useEffect(() => {
@@ -67,10 +79,13 @@ function PageThumbnail({ pdfDoc, pageNumber, active, onSelect, root }) {
     <button
       ref={ref}
       type="button"
-      className={`sidebar__thumb${active ? ' sidebar__thumb--active' : ''}`}
+      className={`sidebar__thumb${active ? ' sidebar__thumb--active' : ''}${
+        selected ? ' sidebar__thumb--selected' : ''
+      }`}
       onClick={onSelect}
       aria-current={active ? 'page' : undefined}
-      aria-label={`Page ${pageNumber}`}
+      aria-pressed={selected}
+      aria-label={`Page ${label}${rotation ? `, rotated ${rotation}°` : ''}`}
     >
       <span
         className={`sidebar__thumb-preview${
@@ -79,7 +94,7 @@ function PageThumbnail({ pdfDoc, pageNumber, active, onSelect, root }) {
       >
         <canvas ref={canvasRef} className="sidebar__thumb-canvas" />
       </span>
-      <span className="sidebar__thumb-label">{pageNumber}</span>
+      <span className="sidebar__thumb-label">{label}</span>
     </button>
   );
 }

@@ -1,30 +1,36 @@
 import { useEffect, useRef } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
+import { effectiveRotation } from '../lib/pageModel.js';
 import EmptyState from './EmptyState.jsx';
 import PageControls from './PageControls.jsx';
 import './Viewer.css';
 
 function Viewer() {
-  const { hasDocument, status, error, pdfDoc, currentPage, scale } =
+  const { hasDocument, status, error, pdfDoc, currentPage, currentEntry, scale } =
     useDocumentContext();
   const canvasRef = useRef(null);
+  const sourcePage = currentEntry?.sourcePage;
+  const rotation = currentEntry?.rotation ?? 0;
 
   useEffect(() => {
-    if (!pdfDoc) return undefined;
+    if (!pdfDoc || !sourcePage) return undefined;
 
     let cancelled = false;
     let renderTask = null;
 
     (async () => {
       try {
-        const page = await pdfDoc.getPage(currentPage);
+        const page = await pdfDoc.getPage(sourcePage);
         if (cancelled) return;
 
         const canvas = canvasRef.current;
         if (!canvas) return;
 
         const dpr = window.devicePixelRatio || 1;
-        const viewport = page.getViewport({ scale });
+        const viewport = page.getViewport({
+          scale,
+          rotation: effectiveRotation(page.rotate, rotation),
+        });
         const ctx = canvas.getContext('2d');
 
         // Backing store at device resolution for crisp output; CSS size in CSS px.
@@ -52,7 +58,7 @@ function Viewer() {
       cancelled = true;
       renderTask?.cancel();
     };
-  }, [pdfDoc, currentPage, scale]);
+  }, [pdfDoc, sourcePage, rotation, scale]);
 
   if (!hasDocument) {
     return (

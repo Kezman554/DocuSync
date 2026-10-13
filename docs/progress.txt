@@ -57,3 +57,21 @@ DocuSync — Progress Log
 - Lazy: long docs don't render every thumbnail up front, only as scrolled in.
 - Verified: 11 tests still green; build clean; 50-page smoke confirms numPages
   and 140x181 thumbnail scale. (IO lazy behaviour is browser-only.)
+
+2026-10-13 — Page model and rotation
+- src/lib/pageModel.js: in-memory document model — ordered list of
+  { id, sourcePage, rotation } entries. Pure helpers: createPageModel,
+  normalizeRotation, rotatePages (non-mutating), effectiveRotation (page
+  /Rotate + edit, since pdf.js getViewport's rotation replaces /Rotate), and
+  nextSelection (click / Ctrl-Cmd toggle / Shift range).
+- DocumentContext: `pages` is now the source of truth (numPages derived);
+  currentPage is a position in the model. Adds selection (Set of ids + anchor),
+  selectPage, rotateLeft/rotateRight (act on selection, else current page).
+  Plain prev/next/goToPage move the single selection with the current page.
+- Viewer + thumbnails render model entries via getViewport({ rotation }) and
+  re-render live on rotation; thumbnails keep 140px width (landscape = shorter),
+  show selected state + aria-pressed.
+- PageControls: rotate left/right buttons; shows "N pages" for multi-select.
+- Source PDF/pdfDoc never modified — rotation lives only in the model.
+- Tests: 25 passing (+11 pageModel unit, +3 rotation integration with mocked
+  pdf.js asserting viewer/thumbnail rotation and untouched source). Build clean.

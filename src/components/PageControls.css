@@ -49,6 +49,12 @@
   white-space: nowrap;
 }
 
+/* "2 pages" next to the rotate buttons when acting on a multi-selection. */
+.page-controls__label--count {
+  font-size: 0.75rem;
+  color: #9aa0a6;
+}
+
 .page-controls__label--zoom {
   min-width: 3.2rem;
   text-align: center;

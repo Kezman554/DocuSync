@@ -6,12 +6,17 @@ function PageControls() {
   const {
     currentPage,
     numPages,
+    selected,
     scale,
     nextPage,
     prevPage,
+    rotateLeft,
+    rotateRight,
     zoomIn,
     zoomOut,
   } = useDocumentContext();
+  const targetCount = Math.max(selected.size, 1);
+  const targetLabel = targetCount > 1 ? `${targetCount} pages` : 'page';
 
   return (
     <div className="page-controls" role="toolbar" aria-label="Page and zoom controls">
@@ -37,6 +42,32 @@ function PageControls() {
         >
           ›
         </button>
+      </div>
+
+      <div className="page-controls__group">
+        <button
+          type="button"
+          className="page-controls__btn"
+          onClick={rotateLeft}
+          aria-label={`Rotate ${targetLabel} left`}
+          title={`Rotate ${targetLabel} left`}
+        >
+          ⟲
+        </button>
+        <button
+          type="button"
+          className="page-controls__btn"
+          onClick={rotateRight}
+          aria-label={`Rotate ${targetLabel} right`}
+          title={`Rotate ${targetLabel} right`}
+        >
+          ⟳
+        </button>
+        {targetCount > 1 && (
+          <span className="page-controls__label page-controls__label--count">
+            {targetCount} pages
+          </span>
+        )}
       </div>
 
       <div className="page-controls__group">
