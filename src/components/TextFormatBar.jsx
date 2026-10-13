@@ -20,7 +20,9 @@ function TextFormatBar() {
   const [sizeDraft, setSizeDraft] = useState(null);
 
   const selected = selectedAnnotationId ? findAnnotation(pages, selectedAnnotationId) : null;
-  const target = selected?.annotation.type === 'text' ? selected.annotation : null;
+  // Stamps (ticks, initials) keep their look; only free text is restyled here.
+  const target =
+    selected?.annotation.type === 'text' && !selected.annotation.stamp ? selected.annotation : null;
   if (tool !== 'text' && !target) return null;
 
   const style = target

@@ -44,6 +44,7 @@ import {
 } from '../lib/textLayout.js';
 import { measureTextWidth } from '../lib/measureText.js';
 import { sniffImage } from '../lib/imageInfo.js';
+import { stampOrigin } from '../lib/stamps.js';
 
 /**
  * Shared application state for the loaded PDFs, page model, selection, and zoom.
@@ -462,6 +463,12 @@ export function DocumentProvider({ children }) {
     });
   }, []);
 
+  /** Merge `patch` into an annotation (e.g. { fontSize, rect } together). */
+  const updateAnnotation = useCallback(
+    (id, patch) => setPages((prev) => updateAnnotationModel(prev, id, patch)),
+    []
+  );
+
   const updateAnnotationRect = useCallback(
     (id, rect) => setPages((prev) => updateAnnotationModel(prev, id, { rect })),
     []
@@ -499,6 +506,7 @@ export function DocumentProvider({ children }) {
           width: content.width,
           height: content.height,
           url,
+          stamp: stampOrigin(stamp), // placed annotation remembers its stamp
         });
       } else {
         setTool('stamp');
@@ -586,6 +594,7 @@ export function DocumentProvider({ children }) {
       selectedAnnotationId,
       selectAnnotation,
       addAnnotation,
+      updateAnnotation,
       updateAnnotationRect,
       updateTextAnnotation,
       deleteAnnotation,
@@ -641,6 +650,7 @@ export function DocumentProvider({ children }) {
       selectedAnnotationId,
       selectAnnotation,
       addAnnotation,
+      updateAnnotation,
       updateAnnotationRect,
       updateTextAnnotation,
       deleteAnnotation,

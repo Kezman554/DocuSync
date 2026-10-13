@@ -11,6 +11,7 @@ import {
   resizeRectLocked,
 } from '../lib/annotations.js';
 import { defaultImageSize } from '../lib/imageInfo.js';
+import { defaultStampSize, stampOrigin } from '../lib/stamps.js';
 import {
   normalizeQuarterTurn,
   pageBoxFromView,
@@ -26,11 +27,34 @@ import {
   STANDARD_FONTS,
   ownSize,
   rectFromTopLeft,
+  scaleFontSize,
   textLayout,
 } from '../lib/textLayout.js';
 import './AnnotationLayer.css';
 
 const HANDLES = ['nw', 'ne', 'sw', 'se'];
+const STAMP_KIND_NAMES = { initials: 'Initials', signature: 'Signature' };
+
+/**
+ * Accessible name for an annotation. Stamps say what they are ("Signature
+ * 1: My signature", "Cross 2"); others by type ("Text 1: Hello", "Image 1").
+ * `counts` tallies per label key as annotations are rendered.
+ */
+function annotationLabel(annotation, counts) {
+  const { stamp } = annotation;
+  const bump = (key) => {
+    counts[key] = (counts[key] ?? 0) + 1;
+    return counts[key];
+  };
+  if (stamp?.kind === 'tick') return `${stamp.name} ${bump(`tick:${stamp.name}`)}`;
+  if (stamp) {
+    const kind = STAMP_KIND_NAMES[stamp.kind] ?? 'Stamp';
+    return `${kind} ${bump(kind)}: ${stamp.name}`;
+  }
+  const name = { marker: 'Marker', text: 'Text', image: 'Image' }[annotation.type] ?? 'Annotation';
+  const n = bump(name);
+  return annotation.type === 'text' && annotation.text ? `${name} ${n}: ${annotation.text}` : `${name} ${n}`;
+}
 /** A press that moves less than this (px) is a click, not a drag-to-draw. */
 const CLICK_SLOP = 4;
 
@@ -165,6 +189,7 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
     selectedAnnotationId,
     selectAnnotation,
     addAnnotation,
+    updateAnnotation,
     updateAnnotationRect,
     updateTextAnnotation,
     deleteAnnotation,
@@ -252,12 +277,13 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
   };
 
   const placeImage = (start, drawn) => {
-    const image = pendingImage;
-    // Default: 1px = 1pt, shrunk to fit 40% of the page as displayed.
-    const size = defaultImageSize(image, {
-      width: bounds.width / scale,
-      height: bounds.height / scale,
-    });
+    const { stamp, ...image } = pendingImage;
+    // Default: signatures at a realistic signing width; other images 1px =
+    // 1pt. Both shrunk to fit 40% of the page as displayed.
+    const pageSize = { width: bounds.width / scale, height: bounds.height / scale };
+    const size = stamp
+      ? defaultStampSize({ kind: stamp.kind, width: image.width, height: image.height }, pageSize)
+      : defaultImageSize(image, pageSize);
     const rectPx =
       drawn && drawn.width >= CLICK_SLOP
         ? drawn
@@ -267,6 +293,7 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
       rotate: view.rotation, // upright as the page is shown now
       rect: viewportToPdfRect(rectPx, view),
       image,
+      ...(stamp && { stamp }),
     });
   };
 
@@ -293,6 +320,7 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
       color,
       rotate,
       rect: rectFromTopLeft(viewportToPdfPoint(topLeftPx, view), rotate, width, height),
+      stamp: stampOrigin(pendingStamp),
     });
   };
 
@@ -327,8 +355,28 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
       id: annotation.id,
       rect: rectPx,
       handle,
-      locked: annotation.type === 'image', // images scale proportionally
+      // Images and stamps scale proportionally; text stamps by font size.
+      locked: annotation.type === 'image' || Boolean(annotation.stamp),
+      fontSize: annotation.type === 'text' ? annotation.fontSize : null,
     });
+  };
+
+  /**
+   * Resize a text stamp: scale its font size by how much the box grew,
+   * within the font-size limits, keeping the dragged handle's opposite
+   * corner fixed.
+   */
+  const resizeTextStamp = (drag, proposed) => {
+    const { fontSize, factor } = scaleFontSize(drag.fontSize, proposed.width / drag.rect.width);
+    const width = drag.rect.width * factor;
+    const height = drag.rect.height * factor;
+    const rect = {
+      x: drag.handle.includes('e') ? drag.rect.x : drag.rect.x + drag.rect.width - width,
+      y: drag.handle.includes('s') ? drag.rect.y : drag.rect.y + drag.rect.height - height,
+      width,
+      height,
+    };
+    updateAnnotation(drag.id, { fontSize, rect: viewportToPdfRect(rect, view) });
   };
 
   const handlePointerMove = (event) => {
@@ -340,7 +388,9 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
     if (drag.kind === 'move') commit(drag.id, moveRect(drag.rect, dx, dy, bounds));
     else if (drag.kind === 'resize') {
       const resize = drag.locked ? resizeRectLocked : resizeRect;
-      commit(drag.id, resize(drag.rect, drag.handle, dx, dy, bounds));
+      const proposed = resize(drag.rect, drag.handle, dx, dy, bounds);
+      if (drag.fontSize) resizeTextStamp(drag, proposed);
+      else commit(drag.id, proposed);
     } else if (drag.kind === 'draw') setDraft(rectFromPoints(drag.start, p));
     else if (drag.kind === 'image') {
       setDraft(lockedDraft(drag.start, p, pendingImage.width / pendingImage.height));
@@ -413,7 +463,7 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
       event.preventDefault();
       deleteAnnotation(annotation.id);
       layerRef.current?.focus({ preventScroll: true });
-    } else if (event.key === 'Enter' && annotation.type === 'text') {
+    } else if (event.key === 'Enter' && annotation.type === 'text' && !annotation.stamp) {
       event.preventDefault();
       setEditingAnnotationId(annotation.id);
     } else if (event.key === 'Escape') {
@@ -430,8 +480,7 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
     }
   };
 
-  const counts = { marker: 0, text: 0, image: 0 };
-  const NAMES = { marker: 'Marker', text: 'Text', image: 'Image' };
+  const counts = {};
 
   return (
     <div
@@ -459,12 +508,8 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
         const selected = annotation.id === selectedAnnotationId;
         const editing = annotation.id === editingAnnotationId;
         const isText = annotation.type === 'text';
-        counts[annotation.type] = (counts[annotation.type] ?? 0) + 1;
-        const n = counts[annotation.type];
-        const name = NAMES[annotation.type] ?? 'Annotation';
-        const label =
-          isText && annotation.text ? `${name} ${n}: ${annotation.text}` : `${name} ${n}`;
-        const shortLabel = `${name.toLowerCase()} ${n}`;
+        const label = annotationLabel(annotation, counts);
+        const shortLabel = label.split(':')[0].toLowerCase();
         return (
           <div
             key={annotation.id}
@@ -484,7 +529,8 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
             aria-pressed={selected}
             onPointerDown={(event) => handleAnnotationPointerDown(event, annotation, rectPx)}
             onDoubleClick={() => {
-              if (isText) setEditingAnnotationId(annotation.id);
+              // Stamps are fixed marks; only free text is edited in place.
+              if (isText && !annotation.stamp) setEditingAnnotationId(annotation.id);
             }}
             onFocus={(event) => {
               if (event.target === event.currentTarget && !selected && tool === 'select') {
@@ -514,8 +560,9 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
             )}
             {selected && !editing && (
               <>
-                {/* Text is sized by its font size; markers and images resize. */}
-                {!isText &&
+                {/* Free text is sized by its font size; everything else,
+                    including tick/initials stamps, resizes from the corners. */}
+                {(!isText || annotation.stamp) &&
                   HANDLES.map((handle) => (
                     <span
                       key={handle}

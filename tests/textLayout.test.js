@@ -7,6 +7,7 @@ import {
   ownToPdf,
   rectFromAnchor,
   rectFromTopLeft,
+  scaleFontSize,
   splitLines,
   textDrawOps,
   textLayout,
@@ -144,5 +145,13 @@ describe('textDrawOps', () => {
     });
     expect(ops.map((o) => o.text)).toEqual(['a', 'c']);
     expect(ops[0].y - ops[1].y).toBeCloseTo(48, 9);
+  });
+});
+
+describe('scaleFontSize', () => {
+  it('scales and reports the factor actually applied, within limits', () => {
+    expect(scaleFontSize(24, 2)).toEqual({ fontSize: 48, factor: 2 });
+    expect(scaleFontSize(24, 0.01)).toEqual({ fontSize: 6, factor: 0.25 }); // min 6pt
+    expect(scaleFontSize(100, 3)).toEqual({ fontSize: 144, factor: 1.44 }); // max 144pt
   });
 });

@@ -354,3 +354,26 @@ DocuSync — Progress Log
   + kept i-dot, soft edges, colour, sensitivity, 1600x1200 timing; +5 dialog
   with decode/encode stood in). Mutation check: global instead of local
   mean fails 4 tests.
+
+2026-10-13 — Stamp placement
+- Placed stamps remember their origin (annotation.stamp = { id, kind, name },
+  stamps.stampOrigin) and are labelled as such: "Signature 1: My signature",
+  "Initials 1: NY", "Tick 1" / "Cross 2".
+- Signatures place at a realistic signing width (stamps.defaultStampSize:
+  160pt ≈ 2¼ in, aspect kept, capped at 40% of the page); other images keep
+  1px = 1pt. Click = centred default, drag = sized (aspect locked).
+- Every stamp moves and resizes: image stamps via the proportional handles
+  (Session M); tick/initials stamps now get corner handles that scale font
+  size and box together (textLayout.scaleFontSize, 6–144pt, opposite corner
+  fixed; DocumentContext.updateAnnotation for { fontSize, rect }).
+- Stamps are fixed marks: no in-place text editing (Enter/double-click), and
+  the text format bar is hidden for them (a font change would turn ✔ into "4").
+- Export unchanged and reused: signatures via Session M's drawImage pipeline
+  (PNG alpha kept as a /SMask, one embed per stamp however often placed);
+  ticks/initials stay vector drawText (crisper than rasterising them).
+- Tests: 237 passing (+6 placement UI on a real PDF with a signature saved
+  through the real IndexedDB store: exported matrix for position/size;
+  SMask inflated -> corners alpha 0, ink 255, >80% transparent; move +
+  proportional resize; placed twice -> embedded once; rotated page; tick
+  resized to 48pt -> exported text size + baseline; stamps not editable;
+  +3 unit). Mutation check: dropping the signature default size fails 3.

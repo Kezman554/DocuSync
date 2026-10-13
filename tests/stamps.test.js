@@ -14,6 +14,7 @@ import {
   normalizeStampRecord,
   createImageStamp,
   createInitialsStamp,
+  defaultStampSize,
   isValidStamp,
   normalizeInitials,
 } from '../src/lib/stamps.js';
@@ -169,5 +170,20 @@ describe('stamp store (IndexedDB)', () => {
   it('rejects clearly when IndexedDB is unavailable', async () => {
     const store = createStampStore(null);
     await expect(store.list()).rejects.toThrow(/not available/);
+  });
+});
+
+describe('defaultStampSize', () => {
+  const letter = { width: 612, height: 792 };
+  it('gives signatures a realistic signing width, keeping aspect', () => {
+    expect(defaultStampSize({ kind: 'signature', width: 520, height: 180 }, letter)).toEqual({
+      width: 160,
+      height: (160 * 180) / 520,
+    });
+  });
+  it('uses 1px = 1pt for other images, and caps everything at 40% of the page', () => {
+    expect(defaultStampSize({ kind: 'tick', width: 100, height: 50 }, letter)).toEqual({ width: 100, height: 50 });
+    const small = defaultStampSize({ kind: 'signature', width: 520, height: 180 }, { width: 300, height: 400 });
+    expect(small.width).toBeCloseTo(120, 9); // 40% of a 300pt-wide page
   });
 });

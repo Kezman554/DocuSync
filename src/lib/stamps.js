@@ -140,3 +140,24 @@ export function isValidStamp(stamp) {
   }
   return false;
 }
+
+/** Realistic signing width for a placed signature, in points (~2¼ in). */
+export const SIGNATURE_WIDTH_PT = 160;
+
+/**
+ * Default size (pt) for placing an image stamp of `width` × `height` px on a
+ * page shown at `pageSize` (pt). Signatures get a realistic signing width;
+ * other images use 1px = 1pt. Either way, at most 40% of the page.
+ */
+export function defaultStampSize({ kind, width, height }, pageSize, fraction = 0.4) {
+  const target = kind === 'signature' ? SIGNATURE_WIDTH_PT / width : 1;
+  const scale = Math.min(
+    target,
+    (pageSize.width * fraction) / width,
+    (pageSize.height * fraction) / height
+  );
+  return { width: width * scale, height: height * scale };
+}
+
+/** What a placed stamp remembers about where it came from. */
+export const stampOrigin = (stamp) => ({ id: stamp.id, kind: stamp.kind, name: stamp.name });

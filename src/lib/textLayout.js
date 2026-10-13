@@ -141,3 +141,14 @@ export function textDrawOps(annotation) {
     }))
     .filter((op) => op.text.length > 0);
 }
+
+/**
+ * Scale a text annotation's font size by `factor` (e.g. from dragging a
+ * stamp's corner handle), clamped to the allowed range. Returns the new
+ * font size and the factor actually applied, so the caller can scale the
+ * box by the same amount.
+ */
+export function scaleFontSize(fontSize, factor) {
+  const next = Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, fontSize * factor));
+  return { fontSize: next, factor: next / fontSize };
+}

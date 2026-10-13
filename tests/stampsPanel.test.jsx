@@ -195,13 +195,13 @@ describe('stamps library', () => {
 
     click(layer, 300, 400);
     click(layer, 100, 100);
-    expect(screen.getAllByRole('button', { name: /^Text \d: ✔$/ })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: /^Tick \d$/ })).toHaveLength(2);
 
     // Escape stops the stamp tool.
     layer.focus();
     await user.keyboard('{Escape}');
     click(layer, 500, 500);
-    expect(screen.getAllByRole('button', { name: /^Text \d: ✔$/ })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: /^Tick \d$/ })).toHaveLength(2);
 
     await user.click(screen.getByRole('button', { name: 'Export PDF' }));
     await waitFor(() => expect(downloadBytes).toHaveBeenCalledTimes(1));
@@ -236,12 +236,12 @@ describe('stamps library', () => {
 
     await user.click(within(panel).getByRole('button', { name: 'NY' }));
     click(layer, 200, 200);
-    expect(screen.getByRole('button', { name: 'Text 1: NY' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Initials 1: NY' })).toBeInTheDocument();
 
     await user.click(within(panel).getByRole('button', { name: 'photo-400x300' }));
     expect(screen.getByRole('button', { name: 'Add image' })).toHaveAttribute('aria-pressed', 'true');
     click(layer, 300, 500);
-    expect(screen.getByRole('button', { name: 'Image 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Signature 1: photo-400x300' })).toBeInTheDocument();
   });
 
   it('still works for the session when IndexedDB is unavailable', async () => {
