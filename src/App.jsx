@@ -4,6 +4,7 @@ import Toolbar from './components/Toolbar.jsx';
 import ThumbnailSidebar from './components/ThumbnailSidebar.jsx';
 import Viewer from './components/Viewer.jsx';
 import DropZone from './components/DropZone.jsx';
+import DeletePagesDialog from './components/DeletePagesDialog.jsx';
 import './App.css';
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
             <Viewer />
           </div>
         </DropZone>
+        <DeletePagesDialog />
       </div>
     </DocumentProvider>
   );

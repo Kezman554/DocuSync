@@ -7,11 +7,13 @@ function PageControls() {
     currentPage,
     numPages,
     selected,
+    canDelete,
     scale,
     nextPage,
     prevPage,
     rotateLeft,
     rotateRight,
+    requestDelete,
     zoomIn,
     zoomOut,
   } = useDocumentContext();
@@ -62,6 +64,18 @@ function PageControls() {
           title={`Rotate ${targetLabel} right`}
         >
           ⟳
+        </button>
+        <button
+          type="button"
+          className="page-controls__btn"
+          onClick={requestDelete}
+          disabled={!canDelete}
+          aria-label={`Delete ${targetLabel}`}
+          title={
+            canDelete ? `Delete ${targetLabel}` : 'Can’t delete every page'
+          }
+        >
+          🗑
         </button>
         {targetCount > 1 && (
           <span className="page-controls__label page-controls__label--count">

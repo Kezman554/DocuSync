@@ -58,6 +58,43 @@
   background: rgba(58, 130, 246, 0.26);
 }
 
+/* Pages being dragged fade so the drop indicator reads clearly. */
+.sidebar__thumb--dragging {
+  opacity: 0.4;
+}
+
+/* Drop indicator: a line in the gap above (or, for the last item, below). */
+.sidebar__item {
+  position: relative;
+}
+
+.sidebar__item--drop-before::before,
+.sidebar__item--drop-after::after {
+  content: '';
+  position: absolute;
+  left: 0.25rem;
+  right: 0.25rem;
+  height: 3px;
+  border-radius: 2px;
+  background: #3a82f6;
+  pointer-events: none;
+}
+
+.sidebar__item--drop-before::before {
+  top: calc(-0.3rem - 1.5px); /* centred in the 0.6rem list gap */
+}
+
+.sidebar__item--drop-after::after {
+  bottom: calc(-0.3rem - 1.5px);
+}
+
+.sidebar__hint {
+  margin: 0.9rem 0 0.25rem;
+  font-size: 0.7rem;
+  color: #6b7077;
+  text-align: center;
+}
+
 /* Stable-sized placeholder so the list height (and lazy observer geometry)
    doesn't jump before a page has rendered. */
 .sidebar__thumb-preview {

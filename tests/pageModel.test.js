@@ -1,9 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
   createPageModel,
+  deletePages,
   effectiveRotation,
+  movePages,
   nextSelection,
   normalizeRotation,
+  nudgePages,
   rotatePages,
 } from '../src/lib/pageModel.js';
 
@@ -97,5 +100,70 @@ describe('nextSelection', () => {
 
     const back = nextSelection(pages, sel('p4'), 'p4', 'p1', { range: true });
     expect([...back.selected]).toEqual(['p1', 'p2', 'p3', 'p4']);
+  });
+});
+
+describe('movePages', () => {
+  const pages = createPageModel(5); // p1..p5
+  const order = (list) => list.map((p) => p.id);
+
+  it('moves a single page forward and backward', () => {
+    expect(order(movePages(pages, ['p1'], 3))).toEqual(['p2', 'p3', 'p1', 'p4', 'p5']);
+    expect(order(movePages(pages, ['p5'], 0))).toEqual(['p5', 'p1', 'p2', 'p3', 'p4']);
+    expect(order(movePages(pages, ['p2'], 5))).toEqual(['p1', 'p3', 'p4', 'p5', 'p2']);
+  });
+
+  it('moves a non-contiguous selection as a block in model order', () => {
+    expect(order(movePages(pages, new Set(['p4', 'p1']), 3))).toEqual([
+      'p2', 'p3', 'p1', 'p4', 'p5',
+    ]);
+    expect(order(movePages(pages, ['p2', 'p4'], 5))).toEqual([
+      'p1', 'p3', 'p5', 'p2', 'p4',
+    ]);
+  });
+
+  it('returns the same array for no-op moves', () => {
+    expect(movePages(pages, ['p2'], 1)).toBe(pages);
+    expect(movePages(pages, ['p2'], 2)).toBe(pages);
+    expect(movePages(pages, [], 0)).toBe(pages);
+  });
+
+  it('clamps out-of-range indexes and keeps entries intact', () => {
+    const rotated = rotatePages(pages, ['p1'], 90);
+    const moved = movePages(rotated, ['p1'], 99);
+    expect(order(moved)).toEqual(['p2', 'p3', 'p4', 'p5', 'p1']);
+    expect(moved[4]).toBe(rotated[0]);
+    expect(order(rotated)).toEqual(['p1', 'p2', 'p3', 'p4', 'p5']);
+  });
+});
+
+describe('nudgePages', () => {
+  const pages = createPageModel(4);
+  const order = (list) => list.map((p) => p.id);
+
+  it('shifts up and down by one slot', () => {
+    expect(order(nudgePages(pages, ['p2'], -1))).toEqual(['p2', 'p1', 'p3', 'p4']);
+    expect(order(nudgePages(pages, ['p2'], 1))).toEqual(['p1', 'p3', 'p2', 'p4']);
+    expect(order(nudgePages(pages, ['p2', 'p3'], 1))).toEqual(['p1', 'p4', 'p2', 'p3']);
+  });
+
+  it('is a no-op at the ends', () => {
+    expect(nudgePages(pages, ['p1'], -1)).toBe(pages);
+    expect(nudgePages(pages, ['p4'], 1)).toBe(pages);
+  });
+});
+
+describe('deletePages', () => {
+  const pages = createPageModel(4);
+
+  it('removes the targeted pages without mutating the input', () => {
+    const next = deletePages(pages, ['p2', 'p4']);
+    expect(next.map((p) => p.id)).toEqual(['p1', 'p3']);
+    expect(pages).toHaveLength(4);
+  });
+
+  it('returns the same array when nothing matches', () => {
+    expect(deletePages(pages, [])).toBe(pages);
+    expect(deletePages(pages, ['nope'])).toBe(pages);
   });
 });

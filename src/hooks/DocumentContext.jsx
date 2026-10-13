@@ -13,7 +13,14 @@ import {
   zoomIn as zoomInScale,
   zoomOut as zoomOutScale,
 } from '../lib/zoom.js';
-import { createPageModel, nextSelection, rotatePages } from '../lib/pageModel.js';
+import {
+  createPageModel,
+  deletePages as deletePagesModel,
+  movePages as movePagesModel,
+  nextSelection,
+  nudgePages as nudgePagesModel,
+  rotatePages,
+} from '../lib/pageModel.js';
 
 /**
  * Shared application state for the loaded PDF, page model, selection, and zoom.
@@ -31,6 +38,7 @@ export function DocumentProvider({ children }) {
   const [pages, setPages] = useState([]); // see lib/pageModel.js
   const [selected, setSelected] = useState(() => new Set()); // page ids
   const [anchorId, setAnchorId] = useState(null); // shift-click range anchor
+  const [pendingDelete, setPendingDelete] = useState(null); // page ids awaiting confirmation
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(DEFAULT_SCALE);
   const [status, setStatus] = useState('idle'); // idle | loading | ready | error
@@ -49,6 +57,7 @@ export function DocumentProvider({ children }) {
     setPages([]);
     setSelected(new Set());
     setAnchorId(null);
+    setPendingDelete(null);
     setCurrentPage(1);
     setScale(DEFAULT_SCALE);
     setStatus('idle');
@@ -75,6 +84,7 @@ export function DocumentProvider({ children }) {
       setPages(model);
       setSelected(new Set(model[0] ? [model[0].id] : []));
       setAnchorId(model[0]?.id ?? null);
+      setPendingDelete(null);
       setDocument({ name: file.name, size: file.size, numPages: pdf.numPages });
       setCurrentPage(1);
       setScale(DEFAULT_SCALE);
@@ -127,19 +137,73 @@ export function DocumentProvider({ children }) {
     [pages, selected, anchorId]
   );
 
-  // Rotate the selected pages, or the current page if nothing is selected.
+  // Page operations act on the selected pages, or the current page if none.
+  const targetIds = useMemo(() => {
+    if (selected.size > 0) return selected;
+    const current = pages[currentPage - 1];
+    return new Set(current ? [current.id] : []);
+  }, [selected, pages, currentPage]);
+
   const rotateSelected = useCallback(
-    (delta) => {
-      const targets =
-        selected.size > 0
-          ? selected
-          : new Set(pages[currentPage - 1] ? [pages[currentPage - 1].id] : []);
-      setPages((prev) => rotatePages(prev, targets, delta));
-    },
-    [selected, pages, currentPage]
+    (delta) => setPages((prev) => rotatePages(prev, targetIds, delta)),
+    [targetIds]
   );
   const rotateLeft = useCallback(() => rotateSelected(-90), [rotateSelected]);
   const rotateRight = useCallback(() => rotateSelected(90), [rotateSelected]);
+
+  // After a reorder, keep showing the same page (by id) at its new position.
+  const applyReorder = useCallback(
+    (next) => {
+      if (next === pages) return;
+      const currentId = pages[currentPage - 1]?.id;
+      setPages(next);
+      const index = next.findIndex((p) => p.id === currentId);
+      if (index !== -1) setCurrentPage(index + 1);
+    },
+    [pages, currentPage]
+  );
+
+  /** Drag-drop: move `ids` to insertion index `toIndex` (see lib/pageModel.js). */
+  const movePages = useCallback(
+    (ids, toIndex) => applyReorder(movePagesModel(pages, ids, toIndex)),
+    [applyReorder, pages]
+  );
+
+  /** Keyboard reorder: shift the target pages one slot up (-1) or down (+1). */
+  const nudgeSelected = useCallback(
+    (direction) => applyReorder(nudgePagesModel(pages, targetIds, direction)),
+    [applyReorder, pages, targetIds]
+  );
+
+  // Deleting every page would leave nothing to view or export.
+  const canDelete = targetIds.size > 0 && targetIds.size < pages.length;
+
+  /** Ask for confirmation before deleting the target pages. */
+  const requestDelete = useCallback(() => {
+    if (canDelete) setPendingDelete([...targetIds]);
+  }, [canDelete, targetIds]);
+  const cancelDelete = useCallback(() => setPendingDelete(null), []);
+
+  const confirmDelete = useCallback(() => {
+    if (!pendingDelete) return;
+    const next = deletePagesModel(pages, pendingDelete);
+    setPendingDelete(null);
+    if (next === pages || next.length === 0) return;
+
+    // Stay on the current page if it survived; otherwise land on the page
+    // that now occupies the first deleted slot (or the new last page).
+    const currentId = pages[currentPage - 1]?.id;
+    let index = next.findIndex((p) => p.id === currentId);
+    if (index === -1) {
+      const removed = new Set(pendingDelete);
+      const firstRemoved = pages.findIndex((p) => removed.has(p.id));
+      index = Math.min(firstRemoved, next.length - 1);
+    }
+    setPages(next);
+    setCurrentPage(index + 1);
+    setSelected(new Set([next[index].id]));
+    setAnchorId(next[index].id);
+  }, [pendingDelete, pages, currentPage]);
 
   const zoomIn = useCallback(() => setScale((s) => zoomInScale(s)), []);
   const zoomOut = useCallback(() => setScale((s) => zoomOutScale(s)), []);
@@ -155,6 +219,9 @@ export function DocumentProvider({ children }) {
       currentPage,
       currentEntry: pages[currentPage - 1] ?? null,
       selected,
+      targetIds,
+      pendingDelete,
+      canDelete,
       scale,
       status,
       error,
@@ -167,6 +234,11 @@ export function DocumentProvider({ children }) {
       selectPage,
       rotateLeft,
       rotateRight,
+      movePages,
+      nudgeSelected,
+      requestDelete,
+      cancelDelete,
+      confirmDelete,
       zoomIn,
       zoomOut,
       resetZoom,
@@ -178,6 +250,8 @@ export function DocumentProvider({ children }) {
       numPages,
       currentPage,
       selected,
+      pendingDelete,
+      canDelete,
       scale,
       status,
       error,
@@ -189,6 +263,12 @@ export function DocumentProvider({ children }) {
       selectPage,
       rotateLeft,
       rotateRight,
+      targetIds,
+      movePages,
+      nudgeSelected,
+      requestDelete,
+      cancelDelete,
+      confirmDelete,
       zoomIn,
       zoomOut,
       resetZoom,

@@ -16,8 +16,10 @@ function PageThumbnail({
   label,
   active,
   selected,
+  dragging = false,
   onSelect,
   root,
+  ...dragProps // draggable / onDragStart / onDragEnd from the sidebar
 }) {
   const [ref, inView] = useInView({ root, rootMargin: '300px 0px' });
   const canvasRef = useRef(null);
@@ -81,11 +83,13 @@ function PageThumbnail({
       type="button"
       className={`sidebar__thumb${active ? ' sidebar__thumb--active' : ''}${
         selected ? ' sidebar__thumb--selected' : ''
-      }`}
+      }${dragging ? ' sidebar__thumb--dragging' : ''}`}
       onClick={onSelect}
       aria-current={active ? 'page' : undefined}
       aria-pressed={selected}
+      data-source-page={sourcePage}
       aria-label={`Page ${label}${rotation ? `, rotated ${rotation}°` : ''}`}
+      {...dragProps}
     >
       <span
         className={`sidebar__thumb-preview${

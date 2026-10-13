@@ -75,3 +75,24 @@ DocuSync — Progress Log
 - Source PDF/pdfDoc never modified — rotation lives only in the model.
 - Tests: 25 passing (+11 pageModel unit, +3 rotation integration with mocked
   pdf.js asserting viewer/thumbnail rotation and untouched source). Build clean.
+
+2026-10-13 — Page reorganisation (reorder + delete)
+- pageModel.js: movePages (block move to an insertion index, model order kept,
+  no-op returns same array), nudgePages (±1 slot), deletePages.
+- DocumentContext: targetIds (selection, else current page); movePages /
+  nudgeSelected keep the current page by id after reorder; requestDelete ->
+  pendingDelete -> confirmDelete/cancelDelete. Deleting every page is blocked
+  (canDelete). After delete: stay on current page if it survived, else the
+  page now in the first deleted slot (or new last page); selection follows.
+- ThumbnailSidebar: HTML5 drag-reorder (dragging a selected page drags the
+  whole selection), insertion line before/after by pointer half, drops in
+  list gaps handled; Alt+Up/Down moves, Delete/Backspace asks to delete.
+  Page drags don't trigger the file DropZone (it only reacts to 'Files').
+- ConfirmDialog (generic alertdialog: Cancel focused, Esc/backdrop cancel,
+  Tab trapped) + DeletePagesDialog. Delete button in PageControls.
+- Thumbnails expose data-source-page (model debugging/tests).
+- Tests: 44 passing. Shared fake pdf.js helper (tests/helpers/fakePdf.jsx);
+  +11 model unit, +11 reorganise integration (drag, block drag, no-op drop,
+  keyboard move, rotation kept through move, confirm/cancel/Esc delete,
+  multi-delete, delete-last, can't delete all). Build clean.
+- Note: HTML5 DnD has no touch support — mobile reorder needs a later pass.
