@@ -157,3 +157,20 @@ DocuSync — Progress Log
   read, failing file named). merge.test.jsx: add + selection + labels,
   cross-document drag then export order/rotation, -edited vs -merged naming,
   drop-to-add, load failure notice, close releases all docs.
+
+2026-10-13 — Coordinate mapping module
+- src/lib/coords.js (pure, no UI deps): viewport (top-left origin, CSS px at
+  zoom; pass scale*dpr for backing pixels) <-> PDF user space (bottom-left,
+  pt). Handles page box with non-zero origin (CropBox), zoom, and total
+  rotation (intrinsic + edit) 0/90/180/270 (other angles -> RangeError).
+  viewportToPdfPoint / pdfToViewportPoint, viewportToPdfRect /
+  pdfToViewportRect (normalised; sides swap at 90/270), viewportSize,
+  pageBoxFromView (pdf.js page.view -> rect), normalizeQuarterTurn, and
+  viewportRectToPdfPlacement -> { x, y, width, height, rotate } for pdf-lib
+  drawImage/drawText so stamped content appears upright on rotated pages.
+- Tests: 112 passing (+32 coords): hand-worked values per rotation, 6 zoom
+  levels x 4 rotations x 3 boxes round trips + corner mapping, rects,
+  placement corners, and a cross-check against real pdf.js viewports
+  (convertToViewportPoint / convertToPdfPoint) — so mapping matches what the
+  preview renders. Mutation check: breaking the 90° case fails 10 tests.
+- Not wired into UI yet (for text/image/signature placement sessions).
