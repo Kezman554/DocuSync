@@ -122,3 +122,23 @@
 .confirm-dialog__hint--error {
   color: #f2a0a0;
 }
+
+.confirm-dialog__options {
+  margin: 0.4rem 0 0.2rem;
+  padding: 0;
+  border: none;
+}
+
+.confirm-dialog__option {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+  color: #e6e6e6;
+}
+
+.confirm-dialog__option-note {
+  font-size: 0.75rem;
+  color: #9aa0a6;
+}

@@ -32,3 +32,10 @@ export async function loadPdfDocument(file) {
   const loadingTask = pdfjsLib.getDocument({ data });
   return loadingTask.promise;
 }
+
+/** Load PDF bytes (e.g. a freshly built export) into a PDFDocumentProxy. */
+export async function loadPdfData(bytes) {
+  const pdfjsLib = await getPdfjs();
+  // pdf.js transfers the buffer to its worker; give it a copy.
+  return pdfjsLib.getDocument({ data: new Uint8Array(bytes) }).promise;
+}

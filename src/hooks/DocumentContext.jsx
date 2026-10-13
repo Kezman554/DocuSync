@@ -28,6 +28,9 @@ import {
   extractFileName,
 } from '../lib/exportPdf.js';
 import { downloadBytes } from '../lib/download.js';
+import { renderPdfToImages } from '../lib/renderPages.js';
+import { IMAGE_FORMATS, imageFileName, zipFileName } from '../lib/imageExport.js';
+import { createZip } from '../lib/zip.js';
 import {
   addAnnotation as addAnnotationModel,
   findAnnotation,
@@ -83,6 +86,7 @@ export function DocumentProvider({ children }) {
   const [adding, setAdding] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState(null); // dismissible error message
+  const [progress, setProgress] = useState(null); // { done, total } while rendering images
   // select | marker | text | image | stamp
   const [tool, setToolState] = useState('select');
   // Image chosen with "Add image" (or an image stamp), waiting to be placed.
@@ -376,6 +380,22 @@ export function DocumentProvider({ children }) {
   }, [pendingDelete, pages, currentPage]);
 
   /**
+   * Bake `entries` (a slice of the page model) into new PDF bytes, reading
+   * only the source files they use. Shared by PDF and image export.
+   */
+  const buildBytes = useCallback(
+    async (entries) => {
+      const inputs = {};
+      for (const id of new Set(entries.map((p) => p.sourceId))) {
+        const src = sourcesById[id];
+        if (src) inputs[id] = { name: src.name, bytes: await src.file.arrayBuffer() };
+      }
+      return buildPdf(inputs, entries);
+    },
+    [sourcesById]
+  );
+
+  /**
    * Build a PDF from `entries` (a slice of the page model) and download it.
    * Shared by full export and page extraction. Resolves true on success.
    * `makeFileName(primaryName, merged)` names the download.
@@ -387,14 +407,8 @@ export function DocumentProvider({ children }) {
       setExporting(true);
       setNotice(null);
       try {
-        // Re-read only the source files these pages actually come from.
         const usedIds = [...new Set(entries.map((p) => p.sourceId))];
-        const inputs = {};
-        for (const id of usedIds) {
-          const src = sourcesById[id];
-          if (src) inputs[id] = { name: src.name, bytes: await src.file.arrayBuffer() };
-        }
-        const bytes = await buildPdf(inputs, entries);
+        const bytes = await buildBytes(entries);
         if (loadTokenRef.current !== token) return false; // document changed meanwhile
         downloadBytes(bytes, makeFileName(primary.name, usedIds.length > 1));
         return true;
@@ -410,7 +424,58 @@ export function DocumentProvider({ children }) {
         if (loadTokenRef.current === token) setExporting(false);
       }
     },
-    [primary, sourcesById]
+    [primary, buildBytes]
+  );
+
+  /**
+   * PDF → images: render the pages at 1-based `positions` exactly as an
+   * export would show them (order, rotation, annotations), as PNG/JPG at
+   * `dpi`. One page downloads as an image; several as a ZIP.
+   */
+  const exportImages = useCallback(
+    async (positions, { format, dpi }) => {
+      const entries = positions.map((n) => pages[n - 1]).filter(Boolean);
+      if (!primary || entries.length === 0) return false;
+      const token = loadTokenRef.current;
+      setExporting(true);
+      setNotice(null);
+      setProgress({ done: 0, total: entries.length });
+      try {
+        const pdfBytes = await buildBytes(entries);
+        const images = await renderPdfToImages(pdfBytes, {
+          format,
+          dpi,
+          onProgress: (done, total) => {
+            if (loadTokenRef.current === token) setProgress({ done, total });
+          },
+        });
+        if (loadTokenRef.current !== token) return false;
+        const names = positions.map((n) => imageFileName(primary.name, n, pages.length, format));
+        if (images.length === 1) {
+          downloadBytes(images[0].bytes, names[0], IMAGE_FORMATS[format].mime);
+        } else {
+          const zip = createZip(images.map((img, i) => ({ name: names[i], bytes: img.bytes })));
+          downloadBytes(zip, zipFileName(primary.name, positions, format), 'application/zip');
+        }
+        return true;
+      } catch (err) {
+        if (loadTokenRef.current !== token) return false;
+        // eslint-disable-next-line no-console
+        console.error('Image export failed', err);
+        setNotice(
+          err instanceof ExportError
+            ? err.message
+            : `Couldn’t export images${err?.message ? `: ${err.message}` : '.'}`
+        );
+        return false;
+      } finally {
+        if (loadTokenRef.current === token) {
+          setExporting(false);
+          setProgress(null);
+        }
+      }
+    },
+    [primary, pages, buildBytes]
   );
 
   /** Bake the whole page model into a new PDF and download it. */
@@ -565,6 +630,7 @@ export function DocumentProvider({ children }) {
       error,
       adding,
       exporting,
+      progress,
       notice,
       openDocument,
       openDocuments,
@@ -584,6 +650,7 @@ export function DocumentProvider({ children }) {
       confirmDelete,
       exportDocument,
       extractPages,
+      exportImages,
       dismissNotice,
       tool,
       setTool,
@@ -622,6 +689,7 @@ export function DocumentProvider({ children }) {
       error,
       adding,
       exporting,
+      progress,
       notice,
       openDocument,
       openDocuments,
@@ -640,6 +708,7 @@ export function DocumentProvider({ children }) {
       confirmDelete,
       exportDocument,
       extractPages,
+      exportImages,
       dismissNotice,
       tool,
       setTool,

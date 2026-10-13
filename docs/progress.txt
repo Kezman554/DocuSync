@@ -377,3 +377,30 @@ DocuSync — Progress Log
   proportional resize; placed twice -> embedded once; rotated page; tick
   resized to 48pt -> exported text size + baseline; stamps not editable;
   +3 unit). Mutation check: dropping the signature default size fails 3.
+
+2026-10-13 — PDF -> images export
+- Images show pages as an export would: the chosen pages are first baked
+  with buildPdf (order, rotation, deletions, text/images/stamps), then
+  rasterised with pdf.js. DocumentContext.buildBytes factored out of
+  runExport and shared; exportImages(positions, { format, dpi }) -> one page
+  downloads as an image, several as a ZIP; progress { done, total }.
+- src/lib/renderPages.js (browser): page by page onto a white background at
+  renderScale(dpi), canvas.toBlob(PNG | JPEG q0.92), backing store freed per
+  page. pdfLoader.loadPdfData(bytes) added.
+- src/lib/imageExport.js (pure): formats, 72/150/300 dpi, renderScale with
+  canvas caps (10k px side, 64 MP area), zero-padded names
+  ("report-page-03.png"), zip names ("report-pages-2-4-png.zip").
+- src/lib/zip.js (pure, no dependency): stored-method ZIP writer, CRC-32,
+  UTF-8 names, DOS timestamps. Cross-checked: Python zipfile.testzip OK and
+  Windows tar extracts byte-identical files (incl. a UTF-8 name).
+- UI: toolbar "Export images…" -> dialog (page ranges pre-filled from the
+  selection, PNG/JPG, resolution, live summary); export button shows
+  "Rendering n/N…".
+- Verified in headless Edge (pdf.js worker bundled on the main thread for
+  file://): reordered + rotated pages exported at 150 dpi PNG are pixel-
+  identical (max diff 0) to the viewer's own rendering of the same pages;
+  JPG at 72 dpi mean diff < 0.5; a baked annotation appears in the image.
+- Tests: 251 passing (+5 zip incl. shared reader, +4 naming/scale, +5 UI with
+  a pdf-lib-reading stand-in renderer: single JPG, ZIP of rotated range,
+  numbering after reorder, progress, validation + failure notice). Mutation
+  check: rendering all pages instead of the selection fails 4.

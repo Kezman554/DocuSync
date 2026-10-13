@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import ExtractPagesDialog from './ExtractPagesDialog.jsx';
+import ExportImagesDialog from './ExportImagesDialog.jsx';
 import './Toolbar.css';
 
 function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
@@ -13,6 +14,7 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
     closeDocument,
     adding,
     exporting,
+    progress,
     notice,
     exportDocument,
     dismissNotice,
@@ -20,6 +22,7 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
   const inputRef = useRef(null);
   const addInputRef = useRef(null);
   const [extractOpen, setExtractOpen] = useState(false);
+  const [imagesOpen, setImagesOpen] = useState(false);
 
   // Copy the FileList before resetting the input (reset empties it).
   const takeFiles = (event) => {
@@ -82,7 +85,11 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
             aria-busy={exporting}
             title="Download a new PDF with your page edits applied"
           >
-            {exporting ? 'Exporting…' : 'Export PDF'}
+            {exporting
+              ? progress
+                ? `Rendering ${progress.done}/${progress.total}…`
+                : 'Exporting…'
+              : 'Export PDF'}
           </button>
         )}
         {hasDocument && (
@@ -94,6 +101,17 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
             title="Save selected pages or ranges as a new PDF"
           >
             Extract pages…
+          </button>
+        )}
+        {hasDocument && (
+          <button
+            type="button"
+            className="toolbar__btn toolbar__btn--ghost"
+            onClick={() => setImagesOpen(true)}
+            disabled={exporting}
+            title="Save pages as PNG or JPG images"
+          >
+            Export images…
           </button>
         )}
         {hasDocument && (
@@ -146,6 +164,9 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
 
       {extractOpen && hasDocument && (
         <ExtractPagesDialog onClose={() => setExtractOpen(false)} />
+      )}
+      {imagesOpen && hasDocument && (
+        <ExportImagesDialog onClose={() => setImagesOpen(false)} />
       )}
 
       {notice && (
