@@ -21,7 +21,12 @@ import {
   nudgePages as nudgePagesModel,
   rotatePages,
 } from '../lib/pageModel.js';
-import { buildPdf, exportFileName, ExportError } from '../lib/exportPdf.js';
+import {
+  buildPdf,
+  exportFileName,
+  ExportError,
+  extractFileName,
+} from '../lib/exportPdf.js';
 import { downloadBytes } from '../lib/download.js';
 
 /**
@@ -219,17 +224,21 @@ export function DocumentProvider({ children }) {
     setAnchorId(next[index].id);
   }, [pendingDelete, pages, currentPage]);
 
-  /** Bake the page model into a new PDF and download it. */
-  const exportDocument = useCallback(async () => {
+  /**
+   * Build a PDF from `entries` (a slice of the page model) and download it.
+   * Shared by full export and page extraction. Resolves true on success.
+   */
+  const runExport = useCallback(async (entries, makeFileName) => {
     const file = fileRef.current;
-    if (!file || pages.length === 0) return;
+    if (!file || entries.length === 0) return false;
     const token = loadTokenRef.current;
     setExporting(true);
     setExportError(null);
     try {
-      const bytes = await buildPdf(await file.arrayBuffer(), pages);
-      if (loadTokenRef.current !== token) return; // document changed meanwhile
-      downloadBytes(bytes, exportFileName(file.name));
+      const bytes = await buildPdf(await file.arrayBuffer(), entries);
+      if (loadTokenRef.current !== token) return false; // document changed meanwhile
+      downloadBytes(bytes, makeFileName(file.name));
+      return true;
     } catch (err) {
       if (loadTokenRef.current !== token) return;
       // eslint-disable-next-line no-console
@@ -237,10 +246,29 @@ export function DocumentProvider({ children }) {
       setExportError(
         err instanceof ExportError ? err.message : 'Export failed. Please try again.'
       );
+      return false;
     } finally {
       if (loadTokenRef.current === token) setExporting(false);
     }
-  }, [pages]);
+  }, []);
+
+  /** Bake the whole page model into a new PDF and download it. */
+  const exportDocument = useCallback(
+    () => runExport(pages, exportFileName),
+    [runExport, pages]
+  );
+
+  /**
+   * Split: extract the pages at 1-based `positions` (current edited order,
+   * rotations included) into a new PDF and download it.
+   */
+  const extractPages = useCallback(
+    (positions) => {
+      const entries = positions.map((n) => pages[n - 1]).filter(Boolean);
+      return runExport(entries, (name) => extractFileName(name, positions));
+    },
+    [runExport, pages]
+  );
   const dismissExportError = useCallback(() => setExportError(null), []);
 
   const zoomIn = useCallback(() => setScale((s) => zoomInScale(s)), []);
@@ -280,6 +308,7 @@ export function DocumentProvider({ children }) {
       cancelDelete,
       confirmDelete,
       exportDocument,
+      extractPages,
       dismissExportError,
       zoomIn,
       zoomOut,
@@ -314,6 +343,7 @@ export function DocumentProvider({ children }) {
       cancelDelete,
       confirmDelete,
       exportDocument,
+      extractPages,
       dismissExportError,
       zoomIn,
       zoomOut,

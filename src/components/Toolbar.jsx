@@ -1,5 +1,6 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
+import ExtractPagesDialog from './ExtractPagesDialog.jsx';
 import './Toolbar.css';
 
 function Toolbar({ onToggleSidebar }) {
@@ -14,6 +15,7 @@ function Toolbar({ onToggleSidebar }) {
     dismissExportError,
   } = useDocumentContext();
   const inputRef = useRef(null);
+  const [extractOpen, setExtractOpen] = useState(false);
 
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
@@ -60,6 +62,17 @@ function Toolbar({ onToggleSidebar }) {
             {exporting ? 'Exporting…' : 'Export PDF'}
           </button>
         )}
+        {hasDocument && (
+          <button
+            type="button"
+            className="toolbar__btn toolbar__btn--ghost"
+            onClick={() => setExtractOpen(true)}
+            disabled={exporting}
+            title="Save selected pages or ranges as a new PDF"
+          >
+            Extract pages…
+          </button>
+        )}
         <button
           type="button"
           className={`toolbar__btn${hasDocument ? ' toolbar__btn--ghost' : ''}`}
@@ -84,6 +97,10 @@ function Toolbar({ onToggleSidebar }) {
           onChange={handleFileChange}
         />
       </div>
+
+      {extractOpen && hasDocument && (
+        <ExtractPagesDialog onClose={() => setExtractOpen(false)} />
+      )}
 
       {exportError && (
         <div className="toolbar__alert" role="alert">

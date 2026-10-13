@@ -97,3 +97,77 @@ describe('export', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
+
+describe('extract pages (split)', () => {
+  beforeEach(() => {
+    setupDom();
+    downloadBytes.mockClear();
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  const openExtract = async (user) => {
+    await user.click(screen.getByRole('button', { name: 'Extract pages…' }));
+    const dialog = screen.getByRole('dialog', { name: 'Extract pages' });
+    return { dialog, input: within(dialog).getByLabelText(/^Pages/) };
+  };
+
+  it('pre-fills the sidebar selection and extracts it', async () => {
+    const user = userEvent.setup();
+    await openPdf(App, user, await realPdfFile());
+
+    await user.click(thumb(2));
+    await user.keyboard('{Shift>}');
+    await user.click(thumb(3));
+    await user.keyboard('{/Shift}');
+
+    const { dialog, input } = await openExtract(user);
+    expect(input).toHaveValue('2-3');
+    expect(input).toHaveFocus();
+    await user.click(within(dialog).getByRole('button', { name: 'Extract 2 pages' }));
+
+    const { fileName, pages } = await exportedPages();
+    expect(fileName).toBe('sample-pages-2-3.pdf');
+    expect(pages).toEqual([
+      { size: SIZES[1], rotate: 0 },
+      { size: SIZES[2], rotate: 0 },
+    ]);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('extracts a typed range list on Enter', async () => {
+    const user = userEvent.setup();
+    await openPdf(App, user, await realPdfFile());
+
+    const { input } = await openExtract(user);
+    expect(input).toHaveValue('1'); // current page when nothing else selected
+    await user.clear(input);
+    await user.type(input, '4, 1-2{Enter}');
+
+    const { fileName, pages } = await exportedPages();
+    expect(fileName).toBe('sample-pages-1-2_4.pdf');
+    expect(pages.map((p) => p.size)).toEqual([SIZES[0], SIZES[1], SIZES[3]]);
+  });
+
+  it('blocks invalid ranges with an explanation', async () => {
+    const user = userEvent.setup();
+    await openPdf(App, user, await realPdfFile());
+
+    const { dialog, input } = await openExtract(user);
+    await user.clear(input);
+    await user.type(input, '3-9');
+
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(input).toHaveAccessibleDescription(
+      'There’s no page 9 — this document has 4 pages'
+    );
+    const extractBtn = within(dialog).getByRole('button', { name: /^Extract/ });
+    expect(extractBtn).toBeDisabled();
+    await user.keyboard('{Enter}');
+    expect(downloadBytes).not.toHaveBeenCalled();
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    // Extracting doesn't touch the document being edited.
+    expect(screen.getByText('Page 1 of 4')).toBeInTheDocument();
+  });
+});

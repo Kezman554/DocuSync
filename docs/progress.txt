@@ -116,3 +116,20 @@ DocuSync — Progress Log
   extracted by pdf.js from output (= selectable), no image XObjects, source
   bytes unchanged, metadata, errors. export.test.jsx drives the UI on a real
   PDF and checks the downloaded bytes; plus error alert.
+
+2026-10-13 — Split (extract pages)
+- src/lib/pageRanges.js: parsePageRanges("1-3, 5, 8-", n) -> sorted unique
+  positions or a user-facing error (singles, ranges either way, open-ended
+  "8-"/"-3", en/em dashes, bounds); formatPageRanges([1,2,3,5]) -> "1-3, 5".
+- exportPdf.js: extractFileName -> "<name>-pages-2-4_7.pdf" ("-page-5",
+  "-extract" fallback when long). Extraction reuses buildPdf (copyPages).
+- DocumentContext: export refactored into runExport(entries, nameFn);
+  extractPages(positions) maps sidebar positions -> model entries, so
+  extracts follow the edited order and keep rotations. Source untouched.
+- ExtractPagesDialog (toolbar "Extract pages…"): pre-filled from selection
+  (or current page), live validation + count, Enter submits, Esc cancels.
+- ConfirmDialog generalised: children, confirmDisabled, role, focusCancel,
+  full Tab trap. Toolbar actions wrap on mobile.
+- Tests: 68 passing (+pageRanges unit; real pdf-lib/pdf.js extract tests
+  confirm exactly the chosen pages with text intact, document order, edits
+  kept; UI tests for selection prefill, typed list + Enter, invalid range).

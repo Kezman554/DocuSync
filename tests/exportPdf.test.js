@@ -3,7 +3,13 @@
 // exported pages still carry real text objects, i.e. text is selectable.
 import { describe, it, expect, beforeAll } from 'vitest';
 import { PDFDict, PDFDocument, PDFName, StandardFonts, degrees } from 'pdf-lib';
-import { buildPdf, exportFileName, ExportError } from '../src/lib/exportPdf.js';
+import {
+  buildPdf,
+  exportFileName,
+  ExportError,
+  extractFileName,
+} from '../src/lib/exportPdf.js';
+import { parsePageRanges } from '../src/lib/pageRanges.js';
 import { createPageModel, deletePages, movePages, rotatePages } from '../src/lib/pageModel.js';
 
 // Distinct sizes make each source page identifiable in the output.
@@ -119,6 +125,58 @@ describe('buildPdf', () => {
     await expect(
       buildPdf(new TextEncoder().encode('not a pdf'), createPageModel(1))
     ).rejects.toBeInstanceOf(ExportError);
+  });
+});
+
+describe('extract (split)', () => {
+  let sourceBytes;
+
+  beforeAll(async () => {
+    pdfjs ??= await import('pdfjs-dist/legacy/build/pdf.mjs');
+    sourceBytes = await makeSourcePdf();
+  });
+
+  // Mirrors DocumentContext.extractPages: positions → model entries → buildPdf.
+  const extract = (pages, rangeText) => {
+    const { pages: positions } = parsePageRanges(rangeText, pages.length);
+    return buildPdf(sourceBytes, positions.map((n) => pages[n - 1]));
+  };
+
+  it('extracts exactly the pages in a range, with text intact', async () => {
+    const out = await extract(createPageModel(4), '2-3');
+    expect(await describePages(out)).toEqual([
+      { size: [612, 792], rotate: 0 },
+      { size: [500, 700], rotate: 90 },
+    ]);
+    expect(await extractText(out)).toEqual(['Bravo page two', 'Charlie page three']);
+  });
+
+  it('extracts a mixed list in document order', async () => {
+    const out = await extract(createPageModel(4), '4, 1');
+    expect(await extractText(out)).toEqual(['Alpha page one', 'Delta page four']);
+  });
+
+  it('uses edited positions and keeps edits (reorder + rotation)', async () => {
+    let pages = movePages(createPageModel(4), ['p4'], 0); // 4,1,2,3
+    pages = rotatePages(pages, ['p1'], 180);
+    const out = await extract(pages, '1-2'); // source 4, then source 1 rotated
+    expect(await describePages(out)).toEqual([
+      { size: [420, 595], rotate: 0 },
+      { size: [595, 842], rotate: 180 },
+    ]);
+    expect(await extractText(out)).toEqual(['Delta page four', 'Alpha page one']);
+  });
+});
+
+describe('extractFileName', () => {
+  it('names the file after the extracted ranges', () => {
+    expect(extractFileName('report.pdf', [2, 3, 4, 7])).toBe('report-pages-2-4_7.pdf');
+    expect(extractFileName('report.pdf', [5])).toBe('report-page-5.pdf');
+  });
+
+  it('falls back to -extract for long range lists', () => {
+    const scattered = Array.from({ length: 30 }, (_, i) => i * 2 + 1);
+    expect(extractFileName('report.pdf', scattered)).toBe('report-extract.pdf');
   });
 });
 

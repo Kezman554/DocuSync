@@ -123,4 +123,15 @@
   .toolbar__group--center {
     display: none;
   }
+
+  /* Four actions don't fit on a phone in one row — let them wrap. */
+  .toolbar__group--end {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.35rem;
+  }
+
+  .toolbar__btn {
+    padding: 0.35rem 0.6rem;
+  }
 }

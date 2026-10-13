@@ -8,6 +8,7 @@
  * pdf-lib is imported lazily so it's only loaded when the user exports.
  */
 import { effectiveRotation } from './pageModel.js';
+import { formatPageRanges } from './pageRanges.js';
 
 /** Thrown for PDFs we can't rewrite (e.g. encrypted); `message` is user-facing. */
 export class ExportError extends Error {
@@ -84,6 +85,18 @@ function copyMetadata(source, output) {
   if (keywords) output.setKeywords(keywords.split(/\s*,\s*|\s+/).filter(Boolean));
   if (creator) output.setCreator(creator);
   output.setProducer('DocuSync (pdf-lib)');
+}
+
+/**
+ * "report.pdf" + [2, 3, 4, 7] → "report-pages-2-4_7.pdf". Falls back to
+ * "report-extract.pdf" when the range list would make an unwieldy name.
+ */
+export function extractFileName(name, positions) {
+  const base = (name || 'document').replace(/\.pdf$/i, '');
+  const ranges = formatPageRanges(positions).replace(/, /g, '_');
+  if (!ranges || ranges.length > 40) return `${base}-extract.pdf`;
+  const label = positions.length === 1 ? 'page' : 'pages';
+  return `${base}-${label}-${ranges}.pdf`;
 }
 
 /** "report.pdf" → "report-edited.pdf". */
