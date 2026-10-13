@@ -82,9 +82,13 @@ export function DocumentProvider({ children }) {
   const [adding, setAdding] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState(null); // dismissible error message
-  const [tool, setToolState] = useState('select'); // select | marker | text | image
-  // Image chosen with "Add image", waiting to be placed with the image tool.
+  // select | marker | text | image | stamp
+  const [tool, setToolState] = useState('select');
+  // Image chosen with "Add image" (or an image stamp), waiting to be placed.
   const [pendingImage, setPendingImage] = useState(null);
+  // Text stamp (tick, initials) placed with the stamp tool — stays armed so
+  // it can be placed repeatedly until the tool changes.
+  const [pendingStamp, setPendingStamp] = useState(null);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState(null);
   const [editingAnnotationId, setEditingAnnotationId] = useState(null);
   // Style for the next text box; also updated when a text box is restyled.
@@ -104,10 +108,11 @@ export function DocumentProvider({ children }) {
     imageUrlsRef.current.clear();
   }, []);
 
-  /** Switch tool; leaving the image tool drops the image waiting to be placed. */
+  /** Switch tool; leaving the image/stamp tool drops what was waiting to be placed. */
   const setTool = useCallback((next) => {
     setToolState(next);
     if (next !== 'image') setPendingImage(null);
+    if (next !== 'stamp') setPendingStamp(null);
   }, []);
   const sourcesRef = useRef(sources);
   sourcesRef.current = sources;
@@ -471,6 +476,39 @@ export function DocumentProvider({ children }) {
   const selectAnnotation = useCallback((id) => setSelectedAnnotationId(id), []);
 
   /**
+   * Arm placement of a stamp from the library: image stamps use the image
+   * tool (one placement), text stamps the stamp tool (repeatable).
+   */
+  const armStamp = useCallback(
+    (stamp) => {
+      if (!stamp) return;
+      const { content } = stamp;
+      if (content.type === 'image') {
+        let url;
+        if (typeof URL.createObjectURL === 'function') {
+          url = URL.createObjectURL(new Blob([content.bytes], { type: content.mime }));
+          imageUrlsRef.current.add(url);
+        }
+        setTool('image');
+        // Same image id for every placement, so export embeds it once.
+        setPendingImage({
+          id: `stamp-${stamp.id}`,
+          name: stamp.name,
+          bytes: content.bytes,
+          mime: content.mime,
+          width: content.width,
+          height: content.height,
+          url,
+        });
+      } else {
+        setTool('stamp');
+        setPendingStamp(stamp);
+      }
+    },
+    [setTool]
+  );
+
+  /**
    * Read a PNG/JPG for placement: check it by content, then arm the image
    * tool with it. Resolves false (with a notice) for anything else.
    */
@@ -542,6 +580,8 @@ export function DocumentProvider({ children }) {
       tool,
       setTool,
       pendingImage,
+      pendingStamp,
+      armStamp,
       loadImageFile,
       selectedAnnotationId,
       selectAnnotation,
@@ -595,6 +635,8 @@ export function DocumentProvider({ children }) {
       tool,
       setTool,
       pendingImage,
+      pendingStamp,
+      armStamp,
       loadImageFile,
       selectedAnnotationId,
       selectAnnotation,

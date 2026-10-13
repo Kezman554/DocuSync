@@ -7,7 +7,7 @@
  *     id, type: 'text',
  *     text: string,                 lines split on "\n" only (no auto-wrap,
  *                                   which would differ between browser & PDF)
- *     font: 'Helvetica' | 'TimesRoman' | 'Courier',   pdf-lib StandardFonts
+ *     font: key of STANDARD_FONTS (pdf-lib StandardFonts names)
  *     fontSize: number,             points
  *     color: '#rrggbb',
  *     rotate: 0 | 90 | 180 | 270,   orientation of the text in PDF space,
@@ -38,8 +38,10 @@ export {
 export const LINE_HEIGHT = 1.2;
 
 /**
- * The three standard font families, with ascender/descender from their AFM
- * metrics (per 1000 em) and CSS stacks for an on-screen look-alike.
+ * Standard PDF fonts we use, with ascender/descender from their AFM metrics
+ * (per 1000 em; ZapfDingbats has none, so its FontBBox) and CSS for an
+ * on-screen look-alike. `symbols` fonts (tick stamps) aren't offered in the
+ * text font picker.
  */
 export const STANDARD_FONTS = {
   Helvetica: {
@@ -60,7 +62,28 @@ export const STANDARD_FONTS = {
     ascender: 629,
     descender: -157,
   },
+  TimesRomanBoldItalic: {
+    label: 'Times Bold Italic',
+    css: '"Times New Roman", Times, "Liberation Serif", serif',
+    style: 'italic',
+    weight: 'bold',
+    ascender: 683,
+    descender: -217,
+  },
+  ZapfDingbats: {
+    label: 'Symbols',
+    css: '"Zapf Dingbats", "Segoe UI Symbol", "DejaVu Sans", "Apple Symbols", sans-serif',
+    ascender: 820,
+    descender: -143,
+    symbols: true,
+  },
 };
+
+/** CSS `font` shorthand for a standard font at `px` size. */
+export function cssFont(font, px) {
+  const f = STANDARD_FONTS[font] ?? STANDARD_FONTS.Helvetica;
+  return `${f.style ?? 'normal'} ${f.weight ?? 'normal'} ${px}px ${f.css}`;
+}
 
 export const DEFAULT_TEXT_STYLE = { font: 'Helvetica', fontSize: 16, color: '#000000' };
 export const MIN_FONT_SIZE = 6;

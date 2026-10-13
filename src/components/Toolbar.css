@@ -67,6 +67,11 @@
   color: #d4d6da;
 }
 
+.toolbar__btn--on {
+  border-color: #3a82f6;
+  color: #fff;
+}
+
 .toolbar__btn--ghost:hover:not(:disabled) {
   background: #34363b;
 }

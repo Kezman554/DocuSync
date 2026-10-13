@@ -38,6 +38,7 @@ const HINTS = {
   marker: 'Click to place a marker, or drag to draw one. Escape cancels.',
   text: 'Click where the text should start, then type. Escape cancels.',
   image: 'Click to place the image, or drag to size it. Escape cancels.',
+  stamp: 'Click to place the stamp; keep clicking to place more. Escape stops.',
   select:
     'Select an annotation to move it with the arrow keys or delete it. Press Enter to edit text.',
 };
@@ -104,6 +105,8 @@ function TextContent({ annotation, boxPx, scale, pageRotation, editing, onChange
           autoFocus
           style={{
             fontFamily: font.css,
+            fontStyle: font.style,
+            fontWeight: font.weight,
             fontSize: `${annotation.fontSize * scale}px`,
             lineHeight: `${annotation.fontSize * LINE_HEIGHT * scale}px`,
             color: annotation.color,
@@ -134,6 +137,8 @@ function TextContent({ annotation, boxPx, scale, pageRotation, editing, onChange
               x={0}
               y={layout.baselines[i]}
               fontFamily={font.css}
+              fontStyle={font.style}
+              fontWeight={font.weight}
               fontSize={annotation.fontSize}
               fill={annotation.color}
               xmlSpace="preserve"
@@ -167,6 +172,7 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
     setEditingAnnotationId,
     textStyle,
     pendingImage,
+    pendingStamp,
   } = useDocumentContext();
 
   const view = useMemo(
@@ -264,12 +270,45 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
     });
   };
 
+  /** Place a text stamp (tick, initials) centred on `point`, upright as shown. */
+  const placeStamp = (point) => {
+    const { text, font, fontSize, color } = pendingStamp.content;
+    const width = measureTextWidth(text, font, fontSize);
+    const { height } = textLayout({ text, font, fontSize });
+    const topLeftPx = clampRectToBounds(
+      {
+        x: point.x - (width * scale) / 2,
+        y: point.y - (height * scale) / 2,
+        width: width * scale,
+        height: height * scale,
+      },
+      bounds
+    );
+    const rotate = view.rotation;
+    addAnnotation(entry.id, {
+      type: 'text',
+      text,
+      font,
+      fontSize,
+      color,
+      rotate,
+      rect: rectFromTopLeft(viewportToPdfPoint(topLeftPx, view), rotate, width, height),
+    });
+  };
+
   const handleLayerPointerDown = (event) => {
-    const placing = { marker: 'draw', text: 'text', image: pendingImage ? 'image' : null }[tool];
+    const placing = {
+      marker: 'draw',
+      text: 'text',
+      image: pendingImage ? 'image' : null,
+      stamp: pendingStamp ? 'stamp' : null,
+    }[tool];
     if (placing) {
       startGesture(event, { kind: placing });
       const p = dragRef.current?.start;
-      if (p && placing !== 'text') setDraft({ x: p.x, y: p.y, width: 0, height: 0 });
+      if (p && (placing === 'draw' || placing === 'image')) {
+        setDraft({ x: p.x, y: p.y, width: 0, height: 0 });
+      }
     } else {
       selectAnnotation(null);
     }
@@ -319,6 +358,10 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
     if (drag.kind === 'text') {
       placeText(drag.start);
       setTool('select');
+      return;
+    }
+    if (drag.kind === 'stamp') {
+      placeStamp(drag.start); // tool stays armed for the next one
       return;
     }
     if (drag.kind === 'image') {

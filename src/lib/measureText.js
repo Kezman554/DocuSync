@@ -6,7 +6,7 @@
  * very old browsers). Only the on-screen box size depends on this — the
  * exported text position comes from lib/textLayout.js.
  */
-import { STANDARD_FONTS, splitLines } from './textLayout.js';
+import { cssFont, splitLines } from './textLayout.js';
 
 let ctx;
 function getContext() {
@@ -21,7 +21,13 @@ function getContext() {
   return ctx;
 }
 
-const AVERAGE_GLYPH = { Helvetica: 0.55, TimesRoman: 0.5, Courier: 0.6 };
+const AVERAGE_GLYPH = {
+  Helvetica: 0.55,
+  TimesRoman: 0.5,
+  Courier: 0.6,
+  TimesRomanBoldItalic: 0.55,
+  ZapfDingbats: 0.85,
+};
 
 /** Width (pt) of the widest line of `text`, never narrower than one glyph. */
 export function measureTextWidth(text, font, fontSize) {
@@ -31,7 +37,7 @@ export function measureTextWidth(text, font, fontSize) {
   for (const line of lines) {
     let w;
     if (c) {
-      c.font = `${fontSize}px ${(STANDARD_FONTS[font] ?? STANDARD_FONTS.Helvetica).css}`;
+      c.font = cssFont(font, fontSize);
       w = c.measureText(line).width;
     } else {
       w = line.length * fontSize * (AVERAGE_GLYPH[font] ?? 0.55);

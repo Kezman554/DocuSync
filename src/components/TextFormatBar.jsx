@@ -43,11 +43,14 @@ function TextFormatBar() {
         value={style.font}
         onChange={(event) => apply({ font: event.target.value })}
       >
-        {Object.entries(STANDARD_FONTS).map(([key, { label, css }]) => (
-          <option key={key} value={key} style={{ fontFamily: css }}>
-            {label}
-          </option>
-        ))}
+        {Object.entries(STANDARD_FONTS)
+          // Symbol fonts only appear for text already set in them (stamps).
+          .filter(([key, f]) => !f.symbols || key === style.font)
+          .map(([key, { label, css }]) => (
+            <option key={key} value={key} style={{ fontFamily: css }}>
+              {label}
+            </option>
+          ))}
       </select>
 
       <label className="text-format__label" htmlFor={ids.size}>

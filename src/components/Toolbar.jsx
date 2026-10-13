@@ -3,7 +3,7 @@ import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import ExtractPagesDialog from './ExtractPagesDialog.jsx';
 import './Toolbar.css';
 
-function Toolbar({ onToggleSidebar }) {
+function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
   const {
     hasDocument,
     document,
@@ -63,6 +63,16 @@ function Toolbar({ onToggleSidebar }) {
       </div>
 
       <div className="toolbar__group toolbar__group--end">
+        <button
+          type="button"
+          className={`toolbar__btn toolbar__btn--ghost${stampsOpen ? ' toolbar__btn--on' : ''}`}
+          onClick={onToggleStamps}
+          aria-expanded={stampsOpen}
+          aria-controls="stamps-panel"
+          title="Stamps library: ticks, initials and signatures"
+        >
+          Stamps
+        </button>
         {hasDocument && (
           <button
             type="button"

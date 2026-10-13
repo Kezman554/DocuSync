@@ -258,3 +258,42 @@ DocuSync — Progress Log
   (rotated matrix), page rotated afterwards, 180/270, dedupe, PNG alpha;
   GIF rejected by content. Mutation check: using bounds instead of own size
   in export fails 3 tests.
+
+2026-10-13 — Stamps library
+- src/lib/stamps.js (pure): stamp = { id, kind: tick|initials|signature,
+  name, content: {type:'text', text, font, fontSize, color} | {type:'image',
+  mime, bytes, width, height}, builtIn?, createdAt?, updatedAt? }.
+  BUILT_IN_STAMPS: Tick ✔, Light tick ✓, Cross ✘, Dot ● in ZapfDingbats.
+  INITIALS_PRESETS: Script (Times Bold Italic) / Classic / Plain looks for
+  user initials; normalizeInitials (≤4 letters, dots/hyphens, any alphabet).
+  createInitialsStamp / createImageStamp (PNG/JPEG by content),
+  isValidStamp, normalizeStampRecord (stored bytes -> this-realm Uint8Array;
+  structured clone can return ArrayBuffer / foreign-realm typed arrays,
+  which fail instanceof here and in pdf-lib).
+- src/lib/stampStore.js: IndexedDB "docusync"/"stamps" (keyPath id):
+  list (normalised, invalid records skipped, oldest first; timestamps
+  strictly increasing so same-ms adds keep order), add, rename, remove,
+  close. Factory injectable for tests; rejects clearly if IDB unavailable.
+- textLayout: added TimesRomanBoldItalic + ZapfDingbats (FontBBox metrics),
+  cssFont(); SVG/textarea respect style/weight; symbol fonts hidden from the
+  text font picker unless in use.
+- StampsContext (inside DocumentProvider): presets + saved stamps, CRUD,
+  in-memory fallback + notice when IndexedDB is unavailable, preview object
+  URLs managed in an effect (revoked when unused/unmounted), selectStamp ->
+  DocumentContext.armStamp: text stamps -> new repeatable 'stamp' tool (click
+  places centred, stays armed until Esc), image stamps -> image tool (same
+  image id for every placement so export embeds once).
+- StampsPanel (toolbar "Stamps", right drawer; overlay on phones): Ticks /
+  Initials (+ creator with live style previews, ink colour) / Signatures
+  (+ "Add from image…"); select, inline rename, delete with ConfirmDialog.
+- Known limitation: pdf-lib embeds ZapfDingbats without a ToUnicode map, so
+  copy/paste of an exported tick yields its code ("4" for ✔); it renders
+  correctly.
+- Dev dep: fake-indexeddb@6 (tests only). npm audit reports 7 advisories in
+  existing build tooling (postcss/source-map-js via vite) — not addressed.
+- Tests: 197 passing (+11 model/store incl. reopen-persistence + cross-realm
+  bytes, +9 panel UI: presets, initials add/validate/rename/delete with
+  reload, signature from image + reload, tick placed twice + Esc + export
+  position, initials/image stamp placement, no-IndexedDB fallback). Mutation
+  check: ignoring stored stamps on load fails all 4 reload tests (this check
+  exposed a weak assertion and the cross-realm bug above).
