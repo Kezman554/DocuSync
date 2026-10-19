@@ -32,6 +32,7 @@ import { flattenInBrowser } from '../lib/flattenBrowser.js';
 import { redactedPositions } from '../lib/redaction.js';
 import { WrongPasswordError, looksEncrypted, protectedFileName } from '../lib/protect.js';
 import { lockInBrowser, unlockInBrowser } from '../lib/protectClient.js';
+import { dropsSharedField, sharedFieldPages } from '../lib/formFields.js';
 import { renderPdfToImages } from '../lib/renderPages.js';
 import { IMAGE_FORMATS, imageFileName, zipFileName } from '../lib/imageExport.js';
 import { createZip } from '../lib/zip.js';
@@ -85,6 +86,15 @@ function describeUnlocked(unlocked) {
         : `“${name}” had restrictions on printing, copying or editing, removed so it can be edited. Exports won’t have them unless you use Export with password….`
     )
     .join(' ');
+}
+
+/** Pages of each form field spread over several pages (none if unknown). */
+async function sharedFieldsOf(pdfDoc) {
+  try {
+    return sharedFieldPages(await pdfDoc.getFieldObjects?.());
+  } catch {
+    return [];
+  }
 }
 
 function describeFailures(failures) {
@@ -307,6 +317,12 @@ export function DocumentProvider({ children }) {
         failures.push({ name: file.name, message: result.reason?.message });
       }
     });
+    // Fields spread over several pages: export drops them if a page is left out.
+    await Promise.all(
+      loaded.map(async (src) => {
+        src.sharedFields = await sharedFieldsOf(src.pdfDoc);
+      })
+    );
     return { loaded, failures, unlocked };
   }, [prepareFile]);
 
@@ -522,6 +538,19 @@ export function DocumentProvider({ children }) {
 
   // Any loaded file had a password: exports without one should say so.
   const hadPassword = useMemo(() => sources.some((src) => src.protected), [sources]);
+
+  /**
+   * Whether exporting only the pages at 1-based `positions` drops a form
+   * field from an exported page because it's also on a page left out.
+   */
+  const dropsFieldsFor = useCallback(
+    (positions) =>
+      dropsSharedField(
+        positions.map((n) => pages[n - 1]).filter(Boolean),
+        Object.fromEntries(sources.map((src) => [src.id, src.sharedFields]))
+      ),
+    [pages, sources]
+  );
 
   // 1-based positions of pages with redaction boxes (flattened on export).
   const redactedPages = useMemo(() => redactedPositions(pages), [pages]);
@@ -900,6 +929,7 @@ export function DocumentProvider({ children }) {
       setWatermark,
       redactedPages,
       hadPassword,
+      dropsFieldsFor,
       passwordRequest,
       unlocking,
       dismissNotice,
@@ -972,6 +1002,7 @@ export function DocumentProvider({ children }) {
       setWatermark,
       redactedPages,
       hadPassword,
+      dropsFieldsFor,
       passwordRequest,
       unlocking,
       dismissNotice,

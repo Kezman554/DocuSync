@@ -90,33 +90,30 @@ export async function buildPdf(sources, pages, { pageNumbers, watermark, flatten
     // anything is redacted: a title or keywords can repeat what was removed.
     if (!anyRedacted && placed.every((p) => p === undefined)) copyMetadata(source, output);
 
-    // copyPages also flattens inherited attributes (MediaBox, Resources,
+    // Copying also flattens inherited attributes (MediaBox, Resources,
     // Rotate) onto each copied page, so pages stand alone in the new tree.
     // One call per source (and target) lets pages share copied fonts/images.
-    const copyInto = async (target, wanted) => {
-      if (!wanted.length) return;
-      const copied = await target.copyPages(
-        source,
-        wanted.map((i) => pages[i].sourcePage - 1)
-      );
+    const place = (wanted, copied) =>
       copied.forEach((page, k) => {
         placed[wanted[k]] = page;
       });
-    };
     const toStaging = slots.filter((i) => redacted[i]);
     const toOutput = slots.filter((i) => !redacted[i]);
-    // Staging first: it needs the redacted pages whole. Then cut them off
-    // before anything is copied into the export.
-    await copyInto(staging, toStaging);
+    const kept = toOutput.map((i) => pages[i].sourcePage - 1);
+
+    // Staging first: it needs the redacted pages whole.
     if (toStaging.length) {
-      isolateRedactedPages(
-        source,
-        toStaging.map((i) => pages[i].sourcePage - 1),
-        toOutput.map((i) => pages[i].sourcePage - 1),
-        pdfLib
+      place(
+        toStaging,
+        await staging.copyPages(source, toStaging.map((i) => pages[i].sourcePage - 1))
       );
     }
-    await copyInto(output, toOutput);
+    // Then cut off every page that isn't exported as-is — redacted, deleted
+    // or left out of an extract — before anything is copied into the export.
+    const keptSet = new Set(kept);
+    const excluded = [...Array(available).keys()].filter((n) => !keptSet.has(n));
+    const severed = excluded.length ? isolateExcludedPages(source, excluded, kept, pdfLib) : [];
+    if (toOutput.length) place(toOutput, await copyPagesLinked(output, source, kept, severed, pdfLib));
   }
   output.setProducer('DocuSync (pdf-lib)');
 
@@ -194,22 +191,27 @@ export async function buildPdf(sources, pages, { pageNumbers, watermark, flatten
 
 /**
  * Cut every path from the pages about to be exported to the content of the
- * redacted ones, in the in-memory `source` (after the redacted pages went to
- * staging). copyPages follows references, so a link's /Dest, a reply's /IRT
- * or a widget's /Parent → /Kids would otherwise copy a redacted page, or its
+ * excluded ones — redacted, deleted, or left out of an extract — in the
+ * in-memory `source` (after any redacted pages went to staging). Copying
+ * follows references, so a link's /Dest, a reply's /IRT or a widget's
+ * /Parent → /Kids would otherwise copy an excluded page, or its
  * annotations, into the export.
  *
- * - Redacted pages and their annotations are emptied, so whatever still
+ * - Excluded pages and their annotations are emptied, so whatever still
  *   points at them finds nothing.
- * - A form field with a widget on a redacted page loses its widgets on the
- *   kept pages too: the value is shared between them, so showing it
- *   elsewhere would repeat what was redacted. Other fields are untouched.
+ * - A form field with a widget on an excluded page loses its widgets on the
+ *   kept pages too: the value is shared between them, so it would carry
+ *   what was on the excluded page. Other fields are untouched.
+ *
+ * Returns the references to excluded pages and their annotations, for
+ * copyPagesLinked to map to nothing.
  */
-function isolateRedactedPages(source, redactedIndices, keptIndices, { PDFName, PDFRef }) {
+function isolateExcludedPages(source, excludedIndices, keptIndices, { PDFName, PDFRef }) {
   const { context } = source;
   const all = source.getPages();
-  const redactedNodes = new Set(redactedIndices.map((n) => all[n].node));
-  const keptPages = keptIndices.map((n) => all[n]).filter((p) => !redactedNodes.has(p.node));
+  const excludedPages = excludedIndices.map((n) => all[n]);
+  const excludedNodes = new Set(excludedPages.map((p) => p.node));
+  const keptPages = keptIndices.map((n) => all[n]).filter((p) => !excludedNodes.has(p.node));
   const Subtype = PDFName.of('Subtype');
   const isWidget = (dict) => dict?.get(Subtype) === PDFName.of('Widget');
   const annotationsOf = (node) => node.Annots()?.asArray() ?? [];
@@ -226,35 +228,66 @@ function isolateRedactedPages(source, redactedIndices, keptIndices, { PDFName, P
     return field;
   };
 
-  const redactedFields = new Set();
-  for (const node of redactedNodes) {
+  const excludedFields = new Set();
+  for (const node of excludedNodes) {
     for (const entry of annotationsOf(node)) {
       const dict = context.lookup(entry);
-      if (isWidget(dict)) redactedFields.add(fieldOf(entry));
+      if (isWidget(dict)) excludedFields.add(fieldOf(entry));
     }
   }
 
-  if (redactedFields.size) {
+  if (excludedFields.size) {
     for (const page of keptPages) {
       const entries = annotationsOf(page.node);
       const kept = entries.filter(
-        (entry) => !(isWidget(context.lookup(entry)) && redactedFields.has(fieldOf(entry)))
+        (entry) => !(isWidget(context.lookup(entry)) && excludedFields.has(fieldOf(entry)))
       );
       if (kept.length !== entries.length) page.node.set(PDFName.of('Annots'), context.obj(kept));
     }
   }
 
+  const severed = [];
   const Type = PDFName.of('Type');
   const empty = (dict, keep) => {
     for (const key of dict.keys()) if (!keep.includes(key)) dict.delete(key);
   };
-  for (const node of redactedNodes) {
-    for (const entry of annotationsOf(node)) {
+  for (const page of excludedPages) {
+    severed.push(page.ref);
+    for (const entry of annotationsOf(page.node)) {
+      if (entry instanceof PDFRef) severed.push(entry);
       const dict = context.lookup(entry);
       if (dict?.keys) empty(dict, [Type, Subtype]);
     }
-    empty(node, [Type]);
+    empty(page.node, [Type]);
   }
+  return severed;
+}
+
+/**
+ * pdf-lib's copyPages, except that references between the copied pages
+ * land on the copies in the page tree, and references in `severed` (left-out
+ * pages and their annotations) land on null. copyPages copies a page that's
+ * referenced (by a link, or an annotation's /P) a second time as a stray
+ * page outside the tree — so a link to a kept page went nowhere, and one to
+ * a left-out page brought that page's content along.
+ */
+async function copyPagesLinked(target, source, indices, severed, { PDFObjectCopier, PDFNull, PDFPage }) {
+  await source.flush();
+  const all = source.getPages();
+  const copier = PDFObjectCopier.for(source.context, target.context);
+  for (const ref of severed) copier.traversedObjects.set(ref, PDFNull);
+  // Claim each kept page's new reference before copying anything, so any
+  // reference to it found along the way resolves to the real copy.
+  const refs = indices.map((n) => {
+    const ref = target.context.nextRef();
+    copier.traversedObjects.set(all[n].ref, ref);
+    return ref;
+  });
+  return indices.map((n, k) => {
+    const node = copier.copy(all[n].node);
+    target.context.assign(refs[k], node);
+    return PDFPage.of(node, refs[k], target);
+  });
 }
 
 /** Embed each standard font at most once per output document. */

@@ -610,9 +610,8 @@ DocuSync — Progress Log
   says so in one sentence.
 - Tests: 356 passing (+3: shared form field, link /Dest, reply /IRT; each
   with a control showing the data is otherwise exported).
-- Still noticed, not built or verified: links/replies pointing at pages
-  the user DELETED (or left out of an extract) very likely drag those
-  pages' content into the export the same way (same copyPages path). Not a redaction leak, but worth the same
+- Links/replies into pages the user DELETED or left out of an extract:
+  confirmed and fixed, see "Left-out pages" below. Not a redaction leak, but worth the same
   treatment some day.
 
 2026-10-19 — Password protection (pdfstudio 0.4.0, qpdf → wasm)
@@ -697,3 +696,40 @@ DocuSync — Progress Log
 - Tests: 385 passing (+1: pages 1–2 of the 3-page encrypted fixture,
   password ticked → pdf.js refuses it without the password; with it, two
   pages, page 3's text absent).
+
+2026-10-19 — Left-out pages: references no longer pull them into exports
+- Every PDF-writing path goes through buildPdf: Export PDF, Extract pages,
+  Export with password (runExport → buildBytes), Compress (compresses the
+  buildBytes export; never copies from a source), Export images (renders
+  the export). Images → PDF builds from images only. No separate Split.
+- Tested each route with a 3-page fixture, page 2 left out, both as Export
+  PDF after deleting page 2 and as Extract pages without it. Before the
+  fix (tests/excludedPages.test.js against the previous exportPdf.js):
+  - link on page 1 to page 2: LEAKED — page 2's content stream (its text)
+    in the file, in a stray copy of page 2 (not extractable as page text).
+  - reply on page 1 to a comment on page 2: LEAKED — page 2's text and the
+    comment's text in the file.
+  - one field with widgets on pages 1 and 2: LEAKED — page 2's text in the
+    file; the field value in the file and extractable.
+  - Same results for Export-after-delete and Extract. Compress carried the
+    leak through. Also broken: a link between two KEPT pages pointed at a
+    stray duplicate of its target, not the page in the tree.
+- Cause: pdf-lib's copier copies a referenced page (link /Dest, any
+  annotation's /P) a second time via copyPDFPage — content, resources,
+  annotations — as a stray page outside the tree.
+- Fix (exportPdf.js): isolateRedactedPages → isolateExcludedPages, run for
+  every source page not exported as-is (redacted, deleted, not extracted):
+  empties them and their annotations, and drops from kept pages the
+  widgets of any field with a widget on an excluded page. copyPagesLinked
+  replaces copyPages for the export: one PDFObjectCopier per source with
+  each kept page's new ref claimed first (so links land on the real page)
+  and excluded pages/annotations mapped to null (no stray copies at all).
+- Users would notice a repeated field vanishing, so Delete pages and
+  Extract pages say so in one sentence — only when it applies, from pdf.js
+  getFieldObjects() per source (lib/formFields.js).
+- Tests: 402 passing (+15 tests/excludedPages.test.js: 3 controls, 6
+  route × mode, kept-page link resolves to the right page with no stray
+  page object, all-kept field keeps its value, Compress, 3 formFields;
+  +2 tests/sharedFieldsUi.test.jsx). The strict search moved to
+  tests/helpers/pdfSearch.js (shared with redaction.test.js), plus pdf.js
+  extraction of page text, annotation contents and field values.

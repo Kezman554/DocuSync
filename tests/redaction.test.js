@@ -10,7 +10,6 @@ import {
   PDFDict,
   PDFDocument,
   PDFName,
-  PDFRawStream,
   PDFString,
   StandardFonts,
   degrees,
@@ -29,6 +28,7 @@ import { createPageModel } from '../src/lib/pageModel.js';
 import { addAnnotation } from '../src/lib/annotations.js';
 import { DEFAULT_NUMBERING } from '../src/lib/pageNumbering.js';
 import { DEFAULT_WATERMARK } from '../src/lib/watermark.js';
+import { fileContains } from './helpers/pdfSearch.js';
 
 const FONT_DATA = 'node_modules/pdfjs-dist/standard_fonts/';
 let pdfjs;
@@ -101,40 +101,6 @@ async function pageTexts(bytes) {
   }
   await pdf.destroy();
   return texts;
-}
-
-/**
- * Every place `word` could hide in the file: the raw bytes, every object
- * (including dicts packed in object streams) and every stream decoded — as
- * plain text, as the hex strings pdf-lib's drawText writes (<48656C6C6F>
- * Tj), or as UTF-16BE hex (how pdf-lib stores form-field values).
- */
-async function fileContains(bytes, word) {
-  const hexes = [
-    Buffer.from(word, 'latin1').toString('hex'),
-    Buffer.from(word, 'utf16le').swap16().toString('hex'),
-  ];
-  const haystacks = [Buffer.from(bytes).toString('latin1')];
-  const doc = await PDFDocument.load(bytes, { updateMetadata: false });
-  for (const [, object] of doc.context.enumerateIndirectObjects()) {
-    if (!(object instanceof PDFRawStream)) {
-      haystacks.push(object.toString());
-      continue;
-    }
-    const filter = object.dict.get(PDFName.of('Filter'));
-    let data = Buffer.from(object.contents);
-    if (filter?.toString() === '/FlateDecode') {
-      try {
-        data = inflateSync(data);
-      } catch {
-        continue; // not flate after all; raw bytes were searched above
-      }
-    }
-    haystacks.push(data.toString('latin1'));
-  }
-  return haystacks.some(
-    (h) => h.includes(word) || hexes.some((hex) => h.toLowerCase().includes(hex))
-  );
 }
 
 /** pdf.js operators on page `n`, e.g. to prove a page is just one image. */
