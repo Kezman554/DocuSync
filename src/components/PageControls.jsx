@@ -133,6 +133,18 @@ function PageControls() {
         >
           🖼 Image
         </button>
+        <button
+          type="button"
+          className={`page-controls__btn page-controls__btn--tool${
+            tool === 'redact' ? ' page-controls__btn--active' : ''
+          }`}
+          onClick={() => setTool(tool === 'redact' ? 'select' : 'redact')}
+          aria-pressed={tool === 'redact'}
+          aria-label="Redact"
+          title="Redact — drag boxes over content to remove it on export (Esc stops)"
+        >
+          ▨ Redact
+        </button>
         <input
           ref={imageInputRef}
           type="file"

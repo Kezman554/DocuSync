@@ -30,6 +30,17 @@
   border-radius: 3px;
 }
 
+/* Redaction: hatched, so what will be removed reads clearly but stays
+   visible underneath until export, where it's blacked out for good. */
+.annotation--redaction {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(17, 17, 17, 0.6) 0 4px,
+    rgba(17, 17, 17, 0.15) 4px 8px
+  );
+  border: 2px solid #c01c28;
+}
+
 .annotation--selected,
 .annotation:focus-visible {
   border-color: #3a82f6;

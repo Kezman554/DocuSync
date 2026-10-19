@@ -6,6 +6,10 @@
  * page order and each page's /Rotate change, and annotations are drawn on top
  * (text as real, selectable text via drawText; images via drawImage).
  *
+ * The one exception is redaction (lib/redaction.js): a page carrying a
+ * redaction box is rebuilt from a flattened image, because pdf-lib can't
+ * remove the content under the box from a content stream.
+ *
  * pdf-lib is imported lazily so it's only loaded when the user exports.
  */
 import { effectiveRotation } from './pageModel.js';
@@ -15,6 +19,7 @@ import { hexToRgb, textDrawOps } from './textLayout.js';
 import { anchorOf, ownSize } from './ownFrame.js';
 import { pageNumberAnnotation } from './pageNumbering.js';
 import { imageWatermarkOp, textWatermarkOp } from './watermark.js';
+import { isRedacted, redactionRects } from './redaction.js';
 
 /** Thrown for PDFs we can't rewrite (e.g. encrypted); `message` is user-facing. */
 export class ExportError extends Error {
@@ -30,14 +35,25 @@ export class ExportError extends Error {
  * @param {{ sourceId: string, sourcePage: number, rotation: number }[]} pages
  *   the page model (or a slice of it), in output order
  * @param {{ pageNumbers?: { labels: (string|null)[], style: object },
- *           watermark?: { config: object, applies: boolean[] } }} [options]
+ *           watermark?: { config: object, applies: boolean[] },
+ *           flatten?: (pdfBytes: Uint8Array, jobs: { rects: object[] }[]) =>
+ *             Promise<{ bytes: Uint8Array, mime: string, width: number, height: number }[]> }} [options]
  *   page numbering: a label per output page (null = none) and its style
  *   (lib/pageNumbering.js); watermark: its settings (lib/watermark.js) and
- *   which output pages get it
+ *   which output pages get it; flatten: renders pages that carry redaction
+ *   boxes (lib/flatten.js) — required if any page has one
  * @returns {Promise<Uint8Array>} the new PDF's bytes
  */
-export async function buildPdf(sources, pages, { pageNumbers, watermark } = {}) {
+export async function buildPdf(sources, pages, { pageNumbers, watermark, flatten } = {}) {
   if (!pages.length) throw new ExportError('There are no pages to export.');
+
+  // Redacted pages are flattened. Without a way to do that, refuse rather
+  // than export them with their content intact.
+  const redacted = pages.map(isRedacted);
+  const anyRedacted = redacted.some(Boolean);
+  if (anyRedacted && !flatten) {
+    throw new ExportError('Redacted pages can’t be exported here, so nothing was exported.');
+  }
 
   const pdfLib = await import('pdf-lib');
   const { PDFDocument, degrees } = pdfLib;
@@ -51,6 +67,9 @@ export async function buildPdf(sources, pages, { pageNumbers, watermark } = {}) 
   const multiple = slotsBySource.size > 1;
 
   const output = await PDFDocument.create();
+  // Redacted pages are copied into this throwaway document instead; it's
+  // rendered to pixels and nothing in it is ever copied into `output`.
+  const staging = anyRedacted ? await PDFDocument.create() : null;
   const placed = new Array(pages.length);
 
   for (const [sourceId, slots] of slotsBySource) {
@@ -67,26 +86,79 @@ export async function buildPdf(sources, pages, { pageNumbers, watermark } = {}) 
       throw new ExportError(`Couldn’t read all pages of ${label} for export.`);
     }
 
-    // Metadata comes from whichever document supplies the first page.
-    if (placed.every((p) => p === undefined)) copyMetadata(source, output);
+    // Metadata comes from whichever document supplies the first page — unless
+    // anything is redacted: a title or keywords can repeat what was removed.
+    if (!anyRedacted && placed.every((p) => p === undefined)) copyMetadata(source, output);
 
     // copyPages also flattens inherited attributes (MediaBox, Resources,
     // Rotate) onto each copied page, so pages stand alone in the new tree.
-    // One call per source lets pages share copied fonts/images.
-    const copied = await output.copyPages(
-      source,
-      slots.map((i) => pages[i].sourcePage - 1)
-    );
-    copied.forEach((page, k) => {
-      placed[slots[k]] = page;
-    });
+    // One call per source (and target) lets pages share copied fonts/images.
+    for (const [target, wanted] of [
+      [output, slots.filter((i) => !redacted[i])],
+      [staging, slots.filter((i) => redacted[i])],
+    ]) {
+      if (!wanted.length) continue;
+      const copied = await target.copyPages(
+        source,
+        wanted.map((i) => pages[i].sourcePage - 1)
+      );
+      copied.forEach((page, k) => {
+        placed[wanted[k]] = page;
+      });
+    }
+  }
+  output.setProducer('DocuSync (pdf-lib)');
+
+  // Redacted pages: compose them in staging exactly as they'd be exported,
+  // then render, black out the boxes, and keep only the pixels.
+  const flatImages = new Map();
+  if (staging) {
+    const stagingEmbed = { font: fontEmbedder(staging, pdfLib), image: imageEmbedder(staging) };
+    const slots = [...pages.keys()].filter((i) => redacted[i]);
+    for (const i of slots) {
+      await composePage(staging, placed[i], i, stagingEmbed);
+    }
+    let images;
+    try {
+      images = await flatten(
+        await staging.save(),
+        slots.map((i) => ({ rects: redactionRects(pages[i]) }))
+      );
+    } catch (err) {
+      throw new ExportError('Couldn’t flatten the redacted pages, so nothing was exported.', {
+        cause: err,
+      });
+    }
+    if (images?.length !== slots.length) {
+      throw new ExportError('Couldn’t flatten the redacted pages, so nothing was exported.');
+    }
+    slots.forEach((i, k) => flatImages.set(i, images[k]));
   }
 
   const embed = { font: fontEmbedder(output, pdfLib), image: imageEmbedder(output) };
-  for (const [i, page] of placed.entries()) {
+  for (const i of pages.keys()) {
+    if (redacted[i]) {
+      // A fresh page at the original visible size and rotation, holding
+      // nothing but the flattened image.
+      const flat = flatImages.get(i);
+      const image = await (flat.mime === 'image/png'
+        ? output.embedPng(flat.bytes)
+        : output.embedJpg(flat.bytes));
+      const page = output.addPage([flat.width, flat.height]);
+      page.drawImage(image, { x: 0, y: 0, width: flat.width, height: flat.height });
+      page.setRotation(placed[i].getRotation());
+    } else {
+      await composePage(output, placed[i], i, embed);
+    }
+  }
+
+  return output.save();
+
+  /** Rotate a copied page as edited, add it to `doc`, and draw DocuSync's marks on it. */
+  async function composePage(doc, page, i, embed) {
     const intrinsic = page.getRotation().angle;
     page.setRotation(degrees(effectiveRotation(intrinsic, pages[i].rotation)));
-    output.addPage(page);
+    doc.addPage(page);
     await drawAnnotations(page, getAnnotations(pages[i]), embed, pdfLib);
     if (watermark?.applies?.[i]) await drawWatermark(page, watermark.config, embed, pdfLib);
 
@@ -107,8 +179,6 @@ export async function buildPdf(sources, pages, { pageNumbers, watermark } = {}) 
       await drawAnnotations(page, [number], embed, pdfLib);
     }
   }
-
-  return output.save();
 }
 
 /** Embed each standard font at most once per output document. */
@@ -143,7 +213,8 @@ function imageEmbedder(output) {
 /**
  * Draw annotations onto a copied page. Annotation coordinates are in the
  * source page's PDF space, which the copied page keeps. Markers are an
- * on-screen test type and aren't exported.
+ * on-screen test type and aren't exported; redaction boxes are applied by
+ * flattening instead.
  */
 async function drawAnnotations(page, annotations, embed, { degrees, rgb }) {
   for (const annotation of annotations) {
@@ -246,7 +317,6 @@ function copyMetadata(source, output) {
   if (subject) output.setSubject(subject);
   if (keywords) output.setKeywords(keywords.split(/\s*,\s*|\s+/).filter(Boolean));
   if (creator) output.setCreator(creator);
-  output.setProducer('DocuSync (pdf-lib)');
 }
 
 /**

@@ -533,3 +533,58 @@ DocuSync — Progress Log
   `composition` (image/font/other bytes). explainResult() turns these into
   notes, e.g. "Most of this file (1.0 MB) is embedded fonts…".
 - Tests: 332 passing.
+
+2026-10-19 — Redaction (removes content, not covers it)
+- Model: annotation { type: 'redaction', rect } in source PDF space; drawn,
+  moved, resized (free) and deleted on the existing layer. "▨ Redact" tool
+  stays armed for several boxes; a bare click makes nothing. Hatched box
+  with red outline in the viewer; "Redacted" badge on sidebar thumbnails.
+- Export (exportPdf.buildPdf `flatten` option): redacted pages are copied
+  into a throwaway staging PDF, given DocuSync's annotations, watermark and
+  page number as usual, rendered UNROTATED by pdf.js at 150 dpi
+  (AnnotationMode.ENABLE, so source annotations/form appearances become
+  pixels too), boxes painted black snapped OUTWARD to whole pixels (no
+  half-covered anti-aliased edge), then encoded as PNG and JPEG q.85 and the
+  smaller kept. Output page = fresh page at the visible (crop) size with the
+  edited rotation and one image. Staging is never copied into the output.
+- Enforcement choice: everything on a redacted page, including DocuSync's
+  own text, is baked into the image rather than drawn as vectors on top.
+  One rule ("a redacted page is exactly one image") is checkable; deciding
+  which vector text clears a box would need exact glyph bounds for rotated
+  text and watermarks, and a near-miss leaks.
+- Fails closed: no flattener, a throwing one or a short result → ExportError,
+  nothing downloaded.
+- Metadata: if any page is redacted, the source's Info (title, author,
+  subject, keywords, creator) is not copied; only Producer is set.
+- Warning: Export PDF asks first; Extract pages and Compress show it inline
+  when their pages include redacted ones. Image export needs none.
+- CLAUDE.md Conventions now records the flattening exception.
+- Verified in headless Edge (CDP, Vite dev server, real flattenInBrowser):
+  3-page dense 10pt text PDF, 2 redacted → no text on those pages, page 2
+  text intact, rotation 90+90=180 kept, title gone, 0.7 s; ~330 KB per
+  flattened page; 10 pt text clearly readable.
+- Tests: 353 passing (+14 tests/redaction.test.js, real pdf.js render via
+  @napi-rs/canvas — now a devDependency: covered and uncovered words absent
+  from extraction AND from every decoded stream (plain + hex), page is one
+  image with no fonts/annots, box pixels pure black in the embedded image,
+  own annotations/page numbers/watermark removed, crop box + rotation,
+  metadata, fails closed; +7 tests/redactionUi.test.jsx).
+- Out of scope, noticed (not built):
+  - Search-and-redact: getTextContent gives item positions, so boxes could
+    be proposed from matches; needs per-glyph widths for partial items.
+  - Selectable text on redacted pages would need real content-stream
+    editing (remove Tj ops / glyphs under the box), not possible in pdf-lib.
+  - Form fields: a redacted page's widgets become pixels and are dropped.
+    Not checked: whether a field whose widgets span a redacted and an
+    unredacted page keeps its value (/V) via the unredacted widget's
+    /Parent. Any future "keep forms" work must not carry fields from
+    redacted pages.
+  - Attachments, document-level JavaScript, outlines/bookmarks and named
+    destinations aren't copied by export today; bookmark titles could
+    repeat redacted text if that ever changes.
+  - Source annotations' /Contents (comment text, popups) on redacted pages
+    are gone with the page; on unredacted pages they're copied as before.
+  - Image export (PDF → images) of a redacted page is a render of the
+    flattened page, so it's safe, but it is re-rasterised a second time.
+  - Hidden text (white text, text under images, invisible render mode) on
+    UNredacted pages is untouched: redaction only applies to boxed pages.

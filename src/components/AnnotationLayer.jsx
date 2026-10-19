@@ -54,7 +54,9 @@ function annotationLabel(annotation, counts) {
     const kind = STAMP_KIND_NAMES[stamp.kind] ?? 'Stamp';
     return `${kind} ${bump(kind)}: ${stamp.name}`;
   }
-  const name = { marker: 'Marker', text: 'Text', image: 'Image' }[annotation.type] ?? 'Annotation';
+  const name =
+    { marker: 'Marker', text: 'Text', image: 'Image', redaction: 'Redaction' }[annotation.type] ??
+    'Annotation';
   const n = bump(name);
   return annotation.type === 'text' && annotation.text ? `${name} ${n}: ${annotation.text}` : `${name} ${n}`;
 }
@@ -66,6 +68,9 @@ const HINTS = {
   text: 'Click where the text should start, then type. Escape cancels.',
   image: 'Click to place the image, or drag to size it. Escape cancels.',
   stamp: 'Click to place the stamp; keep clicking to place more. Escape stops.',
+  redact:
+    'Drag over what should be removed; keep dragging to add more boxes. Escape stops. ' +
+    'On export, the page becomes an image and everything under a box is deleted.',
   select:
     'Select an annotation to move it with the arrow keys or delete it. Press Enter to edit text.',
 };
@@ -337,11 +342,12 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
       text: 'text',
       image: pendingImage ? 'image' : null,
       stamp: pendingStamp ? 'stamp' : null,
+      redact: 'redact',
     }[tool];
     if (placing) {
       startGesture(event, { kind: placing });
       const p = dragRef.current?.start;
-      if (p && (placing === 'draw' || placing === 'image')) {
+      if (p && placing !== 'text' && placing !== 'stamp') {
         setDraft({ x: p.x, y: p.y, width: 0, height: 0 });
       }
     } else {
@@ -398,7 +404,9 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
       const proposed = resize(drag.rect, drag.handle, dx, dy, bounds);
       if (drag.fontSize) resizeTextStamp(drag, proposed);
       else commit(drag.id, proposed);
-    } else if (drag.kind === 'draw') setDraft(rectFromPoints(drag.start, p));
+    } else if (drag.kind === 'draw' || drag.kind === 'redact') {
+      setDraft(rectFromPoints(drag.start, p));
+    }
     else if (drag.kind === 'image') {
       setDraft(lockedDraft(drag.start, p, pendingImage.width / pendingImage.height));
     }
@@ -426,6 +434,16 @@ function AnnotationLayer({ entry, pageNumber, view: pdfView, intrinsicRotate, sc
       const end = localPoint(event);
       placeImage(drag.start, lockedDraft(drag.start, end, pendingImage.width / pendingImage.height));
       setTool('select');
+      return;
+    }
+    if (drag.kind === 'redact') {
+      // Only a deliberate drag makes a box (a stray click shouldn't redact);
+      // the tool stays armed for the next one.
+      setDraft(null);
+      const drawn = rectFromPoints(drag.start, localPoint(event));
+      if (drawn.width >= CLICK_SLOP && drawn.height >= CLICK_SLOP) {
+        addAnnotation(entry.id, { type: 'redaction', rect: viewportToPdfRect(drawn, view) });
+      }
       return;
     }
     if (drag.kind !== 'draw') return;

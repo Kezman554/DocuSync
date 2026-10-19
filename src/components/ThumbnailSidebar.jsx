@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import PageThumbnail from './PageThumbnail.jsx';
+import { isRedacted } from '../lib/redaction.js';
 import PageNumbersDialog from './PageNumbersDialog.jsx';
 import WatermarkDialog from './WatermarkDialog.jsx';
 import './ThumbnailSidebar.css';
@@ -141,6 +142,7 @@ function ThumbnailSidebar({ open }) {
                     sourcePage={entry.sourcePage}
                     rotation={entry.rotation}
                     label={index + 1}
+                    redacted={isRedacted(entry)}
                     active={index + 1 === currentPage}
                     selected={selected.has(entry.id)}
                     dragging={dragging?.has(entry.id) ?? false}

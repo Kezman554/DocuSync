@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import { formatPageRanges, parsePageRanges } from '../lib/pageRanges.js';
+import { redactionWarning } from '../lib/redaction.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 
 /**
@@ -8,7 +9,7 @@ import ConfirmDialog from './ConfirmDialog.jsx';
  * the current sidebar selection (or the current page).
  */
 function ExtractPagesDialog({ onClose }) {
-  const { pages, selected, currentPage, extractPages } = useDocumentContext();
+  const { pages, selected, currentPage, extractPages, redactedPages } = useDocumentContext();
   const inputId = useId();
   const hintId = useId();
 
@@ -19,6 +20,7 @@ function ExtractPagesDialog({ onClose }) {
 
   const result = parsePageRanges(value, pages.length);
   const count = result.pages?.length ?? 0;
+  const redactedCount = result.pages?.filter((n) => redactedPages.includes(n)).length ?? 0;
 
   const submit = () => {
     if (!result.pages) return;
@@ -70,6 +72,11 @@ function ExtractPagesDialog({ onClose }) {
             `${count} of ${pages.length} ${pages.length === 1 ? 'page' : 'pages'}: ${formatPageRanges(result.pages)}`}
         </span>
       </div>
+      {redactedCount > 0 && (
+        <p className="confirm-dialog__warning" role="note">
+          {redactionWarning(redactedCount)}
+        </p>
+      )}
     </ConfirmDialog>
   );
 }

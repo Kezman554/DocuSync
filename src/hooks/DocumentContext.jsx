@@ -28,6 +28,8 @@ import {
   extractFileName,
 } from '../lib/exportPdf.js';
 import { downloadBytes } from '../lib/download.js';
+import { flattenInBrowser } from '../lib/flattenBrowser.js';
+import { redactedPositions } from '../lib/redaction.js';
 import { renderPdfToImages } from '../lib/renderPages.js';
 import { IMAGE_FORMATS, imageFileName, zipFileName } from '../lib/imageExport.js';
 import { createZip } from '../lib/zip.js';
@@ -97,7 +99,7 @@ export function DocumentProvider({ children }) {
   const [numbering, setNumbering] = useState(null);
   // Watermark for the document (null = off); see lib/watermark.js.
   const [watermark, setWatermark] = useState(null);
-  // select | marker | text | image | stamp
+  // select | marker | text | image | stamp | redact
   const [tool, setToolState] = useState('select');
   // Image chosen with "Add image" (or an image stamp), waiting to be placed.
   const [pendingImage, setPendingImage] = useState(null);
@@ -399,6 +401,9 @@ export function DocumentProvider({ children }) {
     [numbering, pages.length]
   );
 
+  // 1-based positions of pages with redaction boxes (flattened on export).
+  const redactedPages = useMemo(() => redactedPositions(pages), [pages]);
+
   // Which pages (by position) get the watermark.
   const watermarkApplies = useMemo(
     () => (watermark ? watermarkAppliesFor(watermark.pages, pages.length) : null),
@@ -427,7 +432,11 @@ export function DocumentProvider({ children }) {
         config: { ...DEFAULT_WATERMARK, ...watermark },
         applies: positions.map((n) => watermarkApplies[n - 1] ?? false),
       };
-      return buildPdf(inputs, entries, { pageNumbers, watermark: watermarkOption });
+      return buildPdf(inputs, entries, {
+        pageNumbers,
+        watermark: watermarkOption,
+        flatten: flattenInBrowser,
+      });
     },
     [pages, sourcesById, numbering, numberLabels, watermark, watermarkApplies]
   );
@@ -745,6 +754,7 @@ export function DocumentProvider({ children }) {
       watermark,
       watermarkApplies,
       setWatermark,
+      redactedPages,
       dismissNotice,
       tool,
       setTool,
@@ -812,6 +822,7 @@ export function DocumentProvider({ children }) {
       watermark,
       watermarkApplies,
       setWatermark,
+      redactedPages,
       dismissNotice,
       tool,
       setTool,

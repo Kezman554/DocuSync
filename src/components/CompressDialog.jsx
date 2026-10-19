@@ -9,6 +9,7 @@ import {
 } from '../lib/compress.js';
 import { downloadBytes } from '../lib/download.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
+import { redactionWarning } from '../lib/redaction.js';
 import './CompressDialog.css';
 
 /**
@@ -17,7 +18,7 @@ import './CompressDialog.css';
  * didn't help), then choose whether to download the result.
  */
 function CompressDialog({ onClose }) {
-  const { compressDocument } = useDocumentContext();
+  const { compressDocument, redactedPages } = useDocumentContext();
   const [preset, setPreset] = useState(DEFAULT_PRESET);
   const [stripMetadata, setStripMetadata] = useState(true);
   const [state, setState] = useState('setup'); // setup | working | done
@@ -141,6 +142,11 @@ function CompressDialog({ onClose }) {
           <span className="confirm-dialog__option-note">title, author, XMP, thumbnails</span>
         </label>
       </div>
+      {redactedPages.length > 0 && (
+        <p className="confirm-dialog__warning" role="note">
+          {redactionWarning(redactedPages.length)}
+        </p>
+      )}
     </ConfirmDialog>
   );
 }

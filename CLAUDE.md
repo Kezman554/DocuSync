@@ -36,6 +36,7 @@ Conventions
 Client-side only: no network calls, uploads, or backend
 Non-destructive edits held in memory; baked into the PDF on export
 Page operations copy page objects, never rasterise (preserve selectable text)
+Deliberate exception, do not "fix": a page with a redaction box is flattened on export (src/lib/flatten.js). pdf-lib can't remove content from a content stream, so the page is rendered with pdf.js, boxes painted black, and rebuilt from the image alone; its original objects must never be copied into the output. Applies only to pages with redaction boxes.
 Pure logic (coordinate mapping, image pipeline) lives in src/lib/ with unit tests
 
 

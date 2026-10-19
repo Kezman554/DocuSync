@@ -3,6 +3,8 @@ import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import ExtractPagesDialog from './ExtractPagesDialog.jsx';
 import ExportImagesDialog from './ExportImagesDialog.jsx';
 import CompressDialog from './CompressDialog.jsx';
+import ConfirmDialog from './ConfirmDialog.jsx';
+import { redactionWarning } from '../lib/redaction.js';
 import './Toolbar.css';
 
 function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
@@ -18,6 +20,7 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
     progress,
     notice,
     exportDocument,
+    redactedPages,
     requestImagesToPdf,
     dismissNotice,
   } = useDocumentContext();
@@ -27,6 +30,7 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
   const [extractOpen, setExtractOpen] = useState(false);
   const [imagesOpen, setImagesOpen] = useState(false);
   const [compressOpen, setCompressOpen] = useState(false);
+  const [redactionConfirm, setRedactionConfirm] = useState(false);
 
   // Copy the FileList before resetting the input (reset empties it).
   const takeFiles = (event) => {
@@ -84,7 +88,8 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
           <button
             type="button"
             className="toolbar__btn"
-            onClick={exportDocument}
+            // Redacted pages become images: say so before exporting.
+            onClick={() => (redactedPages.length ? setRedactionConfirm(true) : exportDocument())}
             disabled={exporting}
             aria-busy={exporting}
             title="Download a new PDF with your page edits applied"
@@ -202,6 +207,18 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
       )}
       {compressOpen && hasDocument && (
         <CompressDialog onClose={() => setCompressOpen(false)} />
+      )}
+      {redactionConfirm && hasDocument && (
+        <ConfirmDialog
+          title="Export with redactions?"
+          message={redactionWarning(redactedPages.length)}
+          confirmLabel="Export PDF"
+          onConfirm={() => {
+            setRedactionConfirm(false);
+            exportDocument();
+          }}
+          onCancel={() => setRedactionConfirm(false)}
+        />
       )}
 
       {notice && (

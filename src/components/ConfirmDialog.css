@@ -123,6 +123,17 @@
   color: #f2a0a0;
 }
 
+/* A consequence the user must know before confirming (e.g. redaction). */
+.confirm-dialog__warning {
+  margin: 0.6rem 0 0;
+  padding: 0.5rem 0.7rem;
+  border-left: 3px solid #c01c28;
+  border-radius: 3px;
+  background: rgba(192, 28, 40, 0.12);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
 .confirm-dialog__options {
   margin: 0.4rem 0 0.2rem;
   padding: 0;

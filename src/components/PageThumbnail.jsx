@@ -15,6 +15,7 @@ function PageThumbnail({
   sourcePage,
   rotation,
   label,
+  redacted = false,
   active,
   selected,
   dragging = false,
@@ -91,7 +92,7 @@ function PageThumbnail({
       data-source-page={sourcePage}
       aria-label={`Page ${label}${source ? `, from ${source.name}` : ''}${
         rotation ? `, rotated ${rotation}°` : ''
-      }`}
+      }${redacted ? ', redacted' : ''}`}
       title={source ? `${source.name}, page ${sourcePage}` : undefined}
       {...dragProps}
     >
@@ -108,6 +109,11 @@ function PageThumbnail({
             aria-hidden="true"
           >
             {source.letter}
+          </span>
+        )}
+        {redacted && (
+          <span className="sidebar__thumb-redacted" aria-hidden="true">
+            Redacted
           </span>
         )}
       </span>
