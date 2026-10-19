@@ -8,8 +8,17 @@ import TextFormatBar from './TextFormatBar.jsx';
 import './Viewer.css';
 
 function Viewer() {
-  const { hasDocument, status, error, sourcesById, currentPage, currentEntry, scale } =
-    useDocumentContext();
+  const {
+    hasDocument,
+    status,
+    error,
+    sourcesById,
+    currentPage,
+    currentEntry,
+    scale,
+    unlocking,
+    passwordRequest,
+  } = useDocumentContext();
   // The current page may come from any of the merged source documents.
   const pdfDoc = sourcesById[currentEntry?.sourceId]?.pdfDoc ?? null;
   const canvasRef = useRef(null);
@@ -79,7 +88,13 @@ function Viewer() {
     return (
       <section className="viewer viewer--empty" aria-label="Document viewer">
         {status === 'loading' ? (
-          <p className="viewer__status">Loading PDF…</p>
+          <p className="viewer__status" role="status">
+            {unlocking
+              ? `Unlocking “${unlocking.name}”…`
+              : passwordRequest
+                ? `Waiting for the password for “${passwordRequest.name}”…`
+                : 'Loading PDF…'}
+          </p>
         ) : status === 'error' ? (
           <div className="viewer__status viewer__status--error">
             <p>Couldn’t open that PDF.</p>

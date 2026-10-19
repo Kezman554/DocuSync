@@ -614,3 +614,53 @@ DocuSync — Progress Log
   the user DELETED (or left out of an extract) very likely drag those
   pages' content into the export the same way (same copyPages path). Not a redaction leak, but worth the same
   treatment some day.
+
+2026-10-19 — Password protection (pdfstudio 0.4.0, qpdf → wasm)
+- pdfstudio pinned exactly (0.4.0, Apache-2.0). Checked before install: no
+  install scripts, no runtime deps; its only fetch is qpdf.wasm itself.
+- protect.js (pure, takes a toolkit): looksEncrypted() — byte scan for
+  /Encrypt (trailers/xref-stream dicts are never compressed or encrypted,
+  so no false negatives; a stray hit just costs one qpdf check) so plain
+  files never load the wasm; lockOptions() — always AES-256, restrictions
+  only sent with a separate owner password (pdfstudio otherwise makes the
+  open password the owner password = full access); lockPdf / unlockPdf
+  (WrongPasswordError from PdfPasswordError; null if not encrypted).
+- protectWorker.js runs pdfstudio in a module Web Worker; protectClient.js
+  starts it on first lock/unlock. wasmUrl passed explicitly from
+  'pdfstudio/qpdf.wasm?url' (works in dev, where Vite pre-bundles pdfstudio,
+  and in the build). vite.config: worker.format 'es' (code splitting).
+  Progress = stages: "Loading…" (fetch/compile wasm) → "Encrypting/
+  Decrypting…" — qpdf reports nothing finer.
+- Open: prepareFile() unlocks before pdf.js. Owner-password-only files open
+  with the empty password, no prompt (they open in every reader anyway);
+  otherwise a prompt asks until right or cancelled (wrong = message +
+  retry; owner password also accepted). The decrypted bytes become the
+  source File, so viewer, page model and export all use them. A notice
+  says the file was unlocked and exports won't carry its password /
+  restrictions unless Export with password is used.
+- Lock: "Export with password…" (open password ×2 required, optional owner
+  password, print/copy/edit allowed by default and only editable with an
+  owner password, honesty note, short-password hint). Compress gets the
+  same as an optional section; it encrypts AFTER compressing. Encryption is
+  always the last step. Passwords live only in dialog state.
+- Bundle (main entry index-*.js): 285.71 kB / 93.30 gzip before →
+  295.06 kB / 96.17 gzip after (+9.4 kB: dialogs + protect.js). pdfstudio
+  is not in it: worker 1.4 kB, pdfstudio 10.8 kB, qpdf glue 41.4 kB, and
+  qpdf.wasm 2,245 kB (694 kB gzip) load only on first lock/unlock.
+- Verified in headless Edge, dev server AND production build: lock → pdf.js
+  PasswordException(1) without password, opens with it; wrong password →
+  WrongPasswordError; both fixtures unlock and open in pdf.js; 1.6 MB
+  lock ~200 ms with the main thread still ticking. Real built app via CDP:
+  upload encrypted fixture → prompt → wrong → right → page renders →
+  Export with password → download opens in pdf.js only with the password;
+  no off-origin requests.
+- Build warns "node:module externalized" for qpdf.js's Node-only branch;
+  harmless in the browser (verified above).
+- Fixtures: tests/fixtures/encrypted-aes256.pdf (open "open-sesame", owner
+  "owner-key"), encrypted-owner-only.pdf (owner "owner-key", no print/
+  copy/edit). Tests: 379 passing (+14 protect.test.js with the real wasm
+  and pdf.js; +9 protectUi.test.jsx with the worker's code run in place,
+  real wasm).
+- Not done: Extract pages and Export images don't offer a password (Export
+  with password and Compress do). Unlocking strips the original
+  restrictions with no way to re-apply the same ones automatically.

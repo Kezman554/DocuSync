@@ -8,6 +8,7 @@ import DropZone from './components/DropZone.jsx';
 import DeletePagesDialog from './components/DeletePagesDialog.jsx';
 import StampsPanel from './components/StampsPanel.jsx';
 import ImagesToPdfDialog from './components/ImagesToPdfDialog.jsx';
+import PasswordPromptDialog from './components/PasswordPromptDialog.jsx';
 import './App.css';
 
 /** The images → PDF dialog, shown while files are waiting in it. */
@@ -50,6 +51,7 @@ function App() {
           </DropZone>
           <DeletePagesDialog />
           <ImagesToPdfHost />
+          <PasswordPromptDialog />
         </div>
       </StampsProvider>
     </DocumentProvider>

@@ -4,6 +4,7 @@ import ExtractPagesDialog from './ExtractPagesDialog.jsx';
 import ExportImagesDialog from './ExportImagesDialog.jsx';
 import CompressDialog from './CompressDialog.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
+import ProtectDialog from './ProtectDialog.jsx';
 import { redactionWarning } from '../lib/redaction.js';
 import './Toolbar.css';
 
@@ -31,6 +32,7 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
   const [imagesOpen, setImagesOpen] = useState(false);
   const [compressOpen, setCompressOpen] = useState(false);
   const [redactionConfirm, setRedactionConfirm] = useState(false);
+  const [protectOpen, setProtectOpen] = useState(false);
 
   // Copy the FileList before resetting the input (reset empties it).
   const takeFiles = (event) => {
@@ -99,6 +101,17 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
                 ? `Rendering ${progress.done}/${progress.total}…`
                 : 'Exporting…'
               : 'Export PDF'}
+          </button>
+        )}
+        {hasDocument && (
+          <button
+            type="button"
+            className="toolbar__btn toolbar__btn--ghost"
+            onClick={() => setProtectOpen(true)}
+            disabled={exporting}
+            title="Download the edited PDF encrypted with a password"
+          >
+            Export with password…
           </button>
         )}
         {hasDocument && (
@@ -208,6 +221,7 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
       {compressOpen && hasDocument && (
         <CompressDialog onClose={() => setCompressOpen(false)} />
       )}
+      {protectOpen && hasDocument && <ProtectDialog onClose={() => setProtectOpen(false)} />}
       {redactionConfirm && hasDocument && (
         <ConfirmDialog
           title="Export with redactions?"

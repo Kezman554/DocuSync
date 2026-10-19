@@ -1,0 +1,98 @@
+import { useId, useRef, useState } from 'react';
+import { useDocumentContext } from '../hooks/DocumentContext.jsx';
+import { WrongPasswordError } from '../lib/protect.js';
+import ConfirmDialog from './ConfirmDialog.jsx';
+
+const STAGE_LABELS = {
+  loading: 'Loading decryption…',
+  working: 'Decrypting…',
+};
+
+/**
+ * Asks for an encrypted file's password when it's opened. A wrong password
+ * says so and asks again; Cancel leaves the file unopened. Either the open
+ * password or the owner password works.
+ */
+function PasswordPrompt({ request }) {
+  const inputId = useId();
+  const hintId = useId();
+  const inputRef = useRef(null);
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
+  const [stage, setStage] = useState(null);
+  const working = stage !== null;
+
+  const submit = async () => {
+    if (!password || working) return;
+    setError(null);
+    setStage('loading');
+    try {
+      await request.attempt(password, setStage); // closes the dialog on success
+    } catch (err) {
+      setStage(null);
+      setError(
+        err instanceof WrongPasswordError
+          ? 'That password didn’t work. Check it and try again.'
+          : `Couldn’t unlock the file${err?.message ? `: ${err.message}` : '.'}`
+      );
+      setPassword('');
+      inputRef.current?.focus();
+    }
+  };
+
+  return (
+    <ConfirmDialog
+      role="dialog"
+      title="Password needed"
+      message={`“${request.name}” is password-protected. Enter its password to view and edit it — it’s decrypted on this device only.`}
+      confirmLabel={working ? STAGE_LABELS[stage] : 'Unlock'}
+      confirmDisabled={!password || working}
+      focusCancel={false}
+      onConfirm={submit}
+      onCancel={working ? () => {} : request.cancel}
+    >
+      <div className="confirm-dialog__field">
+        <label htmlFor={inputId} className="confirm-dialog__label">
+          Password
+        </label>
+        <input
+          ref={inputRef}
+          id={inputId}
+          type="password"
+          className="confirm-dialog__input"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              submit();
+            }
+          }}
+          aria-invalid={Boolean(error)}
+          aria-describedby={hintId}
+          autoComplete="current-password"
+          disabled={working}
+          autoFocus
+        />
+        <span
+          id={hintId}
+          className={`confirm-dialog__hint${error ? ' confirm-dialog__hint--error' : ''}`}
+          role={error ? 'alert' : 'status'}
+        >
+          {error ?? (working ? STAGE_LABELS[stage] : '')}
+        </span>
+      </div>
+    </ConfirmDialog>
+  );
+}
+
+/** Shows the prompt whenever an opened file is waiting for its password. */
+function PasswordPromptDialog() {
+  const { passwordRequest } = useDocumentContext();
+  // Keyed by request so each file starts with an empty field.
+  return passwordRequest ? (
+    <PasswordPrompt key={passwordRequest.id} request={passwordRequest} />
+  ) : null;
+}
+
+export default PasswordPromptDialog;

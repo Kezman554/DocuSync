@@ -10,6 +10,8 @@ import {
 import { downloadBytes } from '../lib/download.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import { redactionWarning } from '../lib/redaction.js';
+import { DEFAULT_PROTECTION, protectionError } from '../lib/protect.js';
+import PasswordFields from './PasswordFields.jsx';
 import './CompressDialog.css';
 
 /**
@@ -24,11 +26,19 @@ function CompressDialog({ onClose }) {
   const [state, setState] = useState('setup'); // setup | working | done
   const [progress, setProgress] = useState(null);
   const [report, setReport] = useState(null);
+  // Optional: encrypt the compressed result (always the last step).
+  const [protect, setProtect] = useState(false);
+  const [protection, setProtection] = useState(DEFAULT_PROTECTION);
+  const [stage, setStage] = useState(null); // encryption engine: loading | working
+  const protectionInvalid = protect && Boolean(protectionError(protection));
 
   const submit = async () => {
+    if (protectionInvalid) return;
     setState('working');
-    const result = await compressDocument({ preset, stripMetadata }, (done, total) =>
-      setProgress({ done, total })
+    const result = await compressDocument(
+      { preset, stripMetadata, protection: protect ? protection : null },
+      (done, total) => setProgress({ done, total }),
+      setStage
     );
     if (!result) {
       onClose(); // the toolbar shows why
@@ -52,7 +62,9 @@ function CompressDialog({ onClose }) {
         title={helped ? 'Compression ready' : 'Couldn’t make this PDF smaller'}
         message={
           helped
-            ? `${COMPRESSION_PRESETS[preset].label} compression made a smaller copy. Download it?`
+            ? `${COMPRESSION_PRESETS[preset].label} compression made a smaller copy${
+                protect ? ', encrypted with your password' : ''
+              }. Download it?`
             : 'Nothing has been downloaded. Here’s why compression didn’t help:'
         }
         confirmLabel={helped ? `Download (${formatBytes(report.after)})` : 'Close'}
@@ -86,6 +98,7 @@ function CompressDialog({ onClose }) {
           onClick={() => {
             setReport(null);
             setProgress(null);
+            setStage(null);
             setState('setup');
           }}
         >
@@ -101,14 +114,19 @@ function CompressDialog({ onClose }) {
       role="dialog"
       title="Compress PDF"
       message="Re-encodes photos and scans as JPEG and removes unused data. Text and drawings stay sharp and selectable."
+      className={protect ? 'protect-dialog' : ''}
       confirmLabel={
         working
-          ? progress
-            ? `Compressing ${progress.done}/${progress.total}…`
-            : 'Compressing…'
+          ? stage === 'loading'
+            ? 'Loading encryption…'
+            : stage === 'working'
+              ? 'Encrypting…'
+              : progress
+                ? `Compressing ${progress.done}/${progress.total}…`
+                : 'Compressing…'
           : 'Compress'
       }
-      confirmDisabled={working}
+      confirmDisabled={working || protectionInvalid}
       focusCancel={false}
       onConfirm={submit}
       onCancel={onClose}
@@ -141,7 +159,20 @@ function CompressDialog({ onClose }) {
           Remove metadata
           <span className="confirm-dialog__option-note">title, author, XMP, thumbnails</span>
         </label>
+        <label className="confirm-dialog__option">
+          <input
+            type="checkbox"
+            checked={protect}
+            onChange={(event) => setProtect(event.target.checked)}
+            disabled={working}
+          />
+          Password protect
+          <span className="confirm-dialog__option-note">AES-256, after compressing</span>
+        </label>
       </div>
+      {protect && (
+        <PasswordFields value={protection} onChange={setProtection} disabled={working} />
+      )}
       {redactedPages.length > 0 && (
         <p className="confirm-dialog__warning" role="note">
           {redactionWarning(redactedPages.length)}

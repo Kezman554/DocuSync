@@ -30,6 +30,8 @@ import {
 import { downloadBytes } from '../lib/download.js';
 import { flattenInBrowser } from '../lib/flattenBrowser.js';
 import { redactedPositions } from '../lib/redaction.js';
+import { WrongPasswordError, looksEncrypted, protectedFileName } from '../lib/protect.js';
+import { lockInBrowser, unlockInBrowser } from '../lib/protectClient.js';
 import { renderPdfToImages } from '../lib/renderPages.js';
 import { IMAGE_FORMATS, imageFileName, zipFileName } from '../lib/imageExport.js';
 import { createZip } from '../lib/zip.js';
@@ -65,6 +67,25 @@ import { stampOrigin } from '../lib/stamps.js';
  * `currentPage` is a 1-based position in that list.
  */
 const DocumentContext = createContext(null);
+
+/** The user closed the password prompt instead of unlocking the file. */
+class PasswordCancelled extends Error {
+  constructor() {
+    super('it needs a password to open');
+    this.name = 'PasswordCancelled';
+  }
+}
+
+/** What to tell the user once encrypted files have been unlocked for editing. */
+function describeUnlocked(unlocked) {
+  return unlocked
+    .map(({ name, needed }) =>
+      needed
+        ? `“${name}” is unlocked for editing. Exports won’t have its password unless you use Export with password….`
+        : `“${name}” had restrictions on printing, copying or editing, removed so it can be edited. Exports won’t have them unless you use Export with password….`
+    )
+    .join(' ');
+}
 
 function describeFailures(failures) {
   if (failures.length === 1) {
@@ -110,6 +131,11 @@ export function DocumentProvider({ children }) {
   const [editingAnnotationId, setEditingAnnotationId] = useState(null);
   // Style for the next text box; also updated when a text box is restyled.
   const [textStyle, setTextStyle] = useState(DEFAULT_TEXT_STYLE);
+  // Encrypted file waiting for its password: { name, attempt(password, onStage), cancel() }.
+  const [passwordRequest, setPasswordRequest] = useState(null);
+  // Encrypted file being unlocked without asking (owner password only): { name, stage }.
+  const [unlocking, setUnlocking] = useState(null);
+  const passwordRequestIdRef = useRef(0);
 
   // Track the most recent open/close so a slow load can't clobber a newer one.
   const loadTokenRef = useRef(0);
@@ -173,15 +199,87 @@ export function DocumentProvider({ children }) {
   }, [setTool, revokeImageUrls]);
 
   /**
-   * Load `files` with pdf.js, giving each a new source id. Files that fail
-   * are reported in `failures` rather than aborting the rest.
+   * Ask the user for `name`'s password until `tryPassword(password, onStage)`
+   * succeeds (the dialog shows wrong ones and asks again) or they cancel.
+   */
+  const askPassword = useCallback(
+    (name, tryPassword) =>
+      new Promise((resolve, reject) => {
+        setPasswordRequest({
+          id: (passwordRequestIdRef.current += 1),
+          name,
+          attempt: async (password, onStage) => {
+            const bytes = await tryPassword(password, onStage); // wrong: rejects to the dialog
+            setPasswordRequest(null);
+            resolve(bytes);
+          },
+          cancel: () => {
+            setPasswordRequest(null);
+            reject(new PasswordCancelled());
+          },
+        });
+      }),
+    []
+  );
+
+  /**
+   * If `file` is encrypted, decrypt it (pdfstudio, in a worker) and return a
+   * File of the decrypted bytes, which then becomes the source the viewer,
+   * page model and export all read. A file with only an owner password opens
+   * with the empty password; otherwise the user is asked. Plain files are
+   * returned as they are, without loading the decryption engine.
+   */
+  const prepareFile = useCallback(
+    async (file) => {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (!looksEncrypted(bytes)) return { file };
+      const decrypt = (password, onStage) => unlockInBrowser(bytes, password, onStage);
+      let plain;
+      let needed = false;
+      setUnlocking({ name: file.name, stage: 'loading' });
+      try {
+        plain = await decrypt('', (stage) => setUnlocking({ name: file.name, stage }));
+      } catch (err) {
+        if (!(err instanceof WrongPasswordError)) throw err;
+        needed = true;
+      } finally {
+        setUnlocking(null);
+      }
+      if (needed) plain = await askPassword(file.name, decrypt);
+      if (plain === null) return { file }; // only looked encrypted
+      return {
+        file: new File([plain], file.name, { type: 'application/pdf' }),
+        unlocked: { name: file.name, needed },
+      };
+    },
+    [askPassword]
+  );
+
+  /**
+   * Load `files` with pdf.js, giving each a new source id. Encrypted files
+   * are unlocked first, one at a time (so only one password prompt shows).
+   * Files that fail are reported in `failures` rather than aborting the
+   * rest; `unlocked` lists the files that were decrypted.
    */
   const loadSources = useCallback(async (files) => {
-    const results = await Promise.allSettled(files.map((f) => loadPdfDocument(f)));
+    const prepared = [];
+    for (const file of files) {
+      try {
+        prepared.push(await prepareFile(file));
+      } catch (err) {
+        prepared.push({ file, error: err });
+      }
+    }
+    const results = await Promise.allSettled(
+      prepared.map((p) => (p.error ? Promise.reject(p.error) : loadPdfDocument(p.file)))
+    );
     const loaded = [];
     const failures = [];
+    const unlocked = prepared.flatMap((p, i) =>
+      p.unlocked && results[i].status === 'fulfilled' ? [p.unlocked] : []
+    );
     results.forEach((result, i) => {
-      const file = files[i];
+      const { file } = prepared[i];
       if (result.status === 'fulfilled') {
         const pdfDoc = result.value;
         loaded.push({
@@ -196,8 +294,8 @@ export function DocumentProvider({ children }) {
         failures.push({ name: file.name, message: result.reason?.message });
       }
     });
-    return { loaded, failures };
-  }, []);
+    return { loaded, failures, unlocked };
+  }, [prepareFile]);
 
   /** Open one or more PDFs as a new document (several are merged, in order). */
   const openDocuments = useCallback(
@@ -208,7 +306,7 @@ export function DocumentProvider({ children }) {
       setStatus('loading');
       setError(null);
 
-      const { loaded, failures } = await loadSources(list);
+      const { loaded, failures, unlocked } = await loadSources(list);
       if (loadTokenRef.current !== token) {
         // A newer open/close happened while we were loading — discard this one.
         loaded.forEach((src) => src.pdfDoc?.destroy?.());
@@ -244,7 +342,11 @@ export function DocumentProvider({ children }) {
       setPages(model);
       setSelected(new Set([model[0].id]));
       setAnchorId(model[0].id);
-      setNotice(failures.length ? describeFailures(failures) : null);
+      const messages = [
+        failures.length && describeFailures(failures),
+        unlocked.length && describeUnlocked(unlocked),
+      ].filter(Boolean);
+      setNotice(messages.length ? messages.join(' ') : null);
       setStatus('ready');
     },
     [loadSources, setTool, revokeImageUrls]
@@ -271,13 +373,17 @@ export function DocumentProvider({ children }) {
       setAdding(true);
       setNotice(null);
 
-      const { loaded, failures } = await loadSources(list);
+      const { loaded, failures, unlocked } = await loadSources(list);
       if (loadTokenRef.current !== token) {
         loaded.forEach((src) => src.pdfDoc?.destroy?.());
         return;
       }
       setAdding(false);
-      if (failures.length) setNotice(describeFailures(failures));
+      const messages = [
+        failures.length && describeFailures(failures),
+        unlocked.length && describeUnlocked(unlocked),
+      ].filter(Boolean);
+      if (messages.length) setNotice(messages.join(' '));
       if (loaded.length === 0) return;
 
       const added = loaded.flatMap((src) => createPageModel(src.numPages, src.id));
@@ -444,10 +550,12 @@ export function DocumentProvider({ children }) {
   /**
    * Build a PDF from `entries` (a slice of the page model) and download it.
    * Shared by full export and page extraction. Resolves true on success.
-   * `makeFileName(primaryName, merged)` names the download.
+   * `makeFileName(primaryName, merged)` names the download. With
+   * `protection` (lib/protect.js) the finished PDF is encrypted as the very
+   * last step; `onStage` reports the encryption engine's progress.
    */
   const runExport = useCallback(
-    async (positions, makeFileName) => {
+    async (positions, makeFileName, { protection, onStage } = {}) => {
       const entries = positions.map((n) => pages[n - 1]).filter(Boolean);
       if (!primary || entries.length === 0) return false;
       const token = loadTokenRef.current;
@@ -455,7 +563,8 @@ export function DocumentProvider({ children }) {
       setNotice(null);
       try {
         const usedIds = [...new Set(entries.map((p) => p.sourceId))];
-        const bytes = await buildBytes(positions);
+        let bytes = await buildBytes(positions);
+        if (protection) bytes = await lockInBrowser(bytes, protection, onStage);
         if (loadTokenRef.current !== token) return false; // document changed meanwhile
         downloadBytes(bytes, makeFileName(primary.name, usedIds.length > 1));
         return true;
@@ -535,6 +644,17 @@ export function DocumentProvider({ children }) {
     [runExport, pages]
   );
 
+  /** Export the whole document, encrypted with `protection` (lib/protect.js). */
+  const exportProtected = useCallback(
+    (protection, onStage) =>
+      runExport(
+        pages.map((_, i) => i + 1),
+        (name) => protectedFileName(name),
+        { protection, onStage }
+      ),
+    [runExport, pages]
+  );
+
   /**
    * Split: extract the pages at 1-based `positions` (current edited order,
    * rotations included) into a new PDF and download it.
@@ -550,9 +670,11 @@ export function DocumentProvider({ children }) {
    * optional metadata strip, unused objects dropped) without downloading.
    * Resolves the report from compressPdf — `before` being the same export
    * uncompressed — plus `fileName` for saving `bytes`; null on failure.
+   * With `protection`, the compressed result is then encrypted (last:
+   * nothing can compress an encrypted file), and `after` is that size.
    */
   const compressDocument = useCallback(
-    async ({ preset, stripMetadata }, onProgress) => {
+    async ({ preset, stripMetadata, protection }, onProgress, onStage) => {
       const { quality, maxSide } = COMPRESSION_PRESETS[preset];
       if (!primary || pages.length === 0) return null;
       const token = loadTokenRef.current;
@@ -568,6 +690,10 @@ export function DocumentProvider({ children }) {
             if (loadTokenRef.current === token) onProgress?.(done, total);
           }
         );
+        if (protection) {
+          result.bytes = await lockInBrowser(result.bytes, protection, onStage);
+          result.after = result.bytes.length;
+        }
         if (loadTokenRef.current !== token) return null;
         return { ...result, fileName: compressedFileName(primary.name) };
       } catch (err) {
@@ -743,6 +869,7 @@ export function DocumentProvider({ children }) {
       cancelDelete,
       confirmDelete,
       exportDocument,
+      exportProtected,
       extractPages,
       exportImages,
       compressDocument,
@@ -755,6 +882,8 @@ export function DocumentProvider({ children }) {
       watermarkApplies,
       setWatermark,
       redactedPages,
+      passwordRequest,
+      unlocking,
       dismissNotice,
       tool,
       setTool,
@@ -811,6 +940,7 @@ export function DocumentProvider({ children }) {
       cancelDelete,
       confirmDelete,
       exportDocument,
+      exportProtected,
       extractPages,
       exportImages,
       compressDocument,
@@ -823,6 +953,8 @@ export function DocumentProvider({ children }) {
       watermarkApplies,
       setWatermark,
       redactedPages,
+      passwordRequest,
+      unlocking,
       dismissNotice,
       tool,
       setTool,

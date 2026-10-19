@@ -12,6 +12,7 @@
   "dependencies": {
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.7.76",
+    "pdfstudio": "0.4.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "signature_pad": "^5.0.4"
