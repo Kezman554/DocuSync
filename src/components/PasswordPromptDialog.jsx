@@ -2,6 +2,7 @@ import { useId, useRef, useState } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import { WrongPasswordError } from '../lib/protect.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
+import './PasswordPromptDialog.css';
 
 const STAGE_LABELS = {
   loading: 'Loading decryption…',
@@ -9,9 +10,11 @@ const STAGE_LABELS = {
 };
 
 /**
- * Asks for an encrypted file's password when it's opened. A wrong password
- * says so and asks again; Cancel leaves the file unopened. Either the open
- * password or the owner password works.
+ * Asks before an encrypted file is unlocked on open. kind 'open': its
+ * password (the open or the owner password). kind 'owner' (only an owner
+ * password restricts it): the owner password, or confirmation the user has
+ * the right to edit it. A wrong password says so and asks again; Cancel
+ * leaves the file unopened.
  */
 function PasswordPrompt({ request }) {
   const inputId = useId();
@@ -21,6 +24,7 @@ function PasswordPrompt({ request }) {
   const [error, setError] = useState(null);
   const [stage, setStage] = useState(null);
   const working = stage !== null;
+  const owner = request.kind === 'owner';
 
   const submit = async () => {
     if (!password || working) return;
@@ -43,8 +47,12 @@ function PasswordPrompt({ request }) {
   return (
     <ConfirmDialog
       role="dialog"
-      title="Password needed"
-      message={`“${request.name}” is password-protected. Enter its password to view and edit it — it’s decrypted on this device only.`}
+      title={owner ? 'Restricted PDF' : 'Password needed'}
+      message={
+        owner
+          ? `“${request.name}” has restrictions on printing, copying or editing set by its owner. Enter the owner password to remove them, or confirm you may edit it — it’s unlocked on this device only.`
+          : `“${request.name}” is password-protected. Enter its password to view and edit it — it’s decrypted on this device only.`
+      }
       confirmLabel={working ? STAGE_LABELS[stage] : 'Unlock'}
       confirmDisabled={!password || working}
       focusCancel={false}
@@ -53,7 +61,7 @@ function PasswordPrompt({ request }) {
     >
       <div className="confirm-dialog__field">
         <label htmlFor={inputId} className="confirm-dialog__label">
-          Password
+          {owner ? 'Owner password' : 'Password'}
         </label>
         <input
           ref={inputRef}
@@ -82,6 +90,16 @@ function PasswordPrompt({ request }) {
           {error ?? (working ? STAGE_LABELS[stage] : '')}
         </span>
       </div>
+      {owner && (
+        <button
+          type="button"
+          className="password-prompt__without"
+          onClick={request.confirmRight}
+          disabled={working}
+        >
+          I don’t have the owner password, and I have the right to edit this file
+        </button>
+      )}
     </ConfirmDialog>
   );
 }

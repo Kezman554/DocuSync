@@ -664,3 +664,28 @@ DocuSync — Progress Log
 - Not done: Extract pages and Export images don't offer a password (Export
   with password and Compress do). Unlocking strips the original
   restrictions with no way to re-apply the same ones automatically.
+
+2026-10-19 — Password follow-ups
+- Owner-password-only files now ask before unlocking ("Restricted PDF"):
+  enter the owner password (wrong = message + retry, like the open
+  password) or "I don't have the owner password, and I have the right to
+  edit this file". Either unlocks as before; Cancel leaves it unopened.
+  The empty-password decrypt still runs first (it's how the kind of
+  protection is told apart) but its result is only used after the user
+  chooses. The notice that exports won't carry the restrictions follows
+  either choice. qpdf rejects a wrong password even though the open
+  password is empty, so a password that unlocks such a file is the owner's.
+- Sources remember they were protected (source.protected; context
+  hadPassword). Plain export then says, before downloading, "The original
+  was password-protected, but this new file won't be." with an Export with
+  password… button (ProtectOffer): Export PDF via a confirm dialog (merged
+  with the redaction one when both apply), Extract pages and Compress
+  inline in their dialogs (Compress hides it once Password protect is
+  ticked). Plain export stays one confirm away; never blocked.
+- The offer opens Export with password, which exports the whole document
+  — from Extract pages that means the extract choice is dropped.
+- Tests: 384 passing. protectUi: the owner-only test now covers prompt →
+  wrong → owner-key, confirmation, and Cancel; the edit-and-export test
+  goes through the new warning; +3 for the warning (shown for
+  encrypted-aes256.pdf on all three paths, not for a plain file).
+- Main bundle 296.45 kB / 96.66 gzip (+1.4 kB).

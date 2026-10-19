@@ -2,14 +2,16 @@ import { useId, useState } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import { formatPageRanges, parsePageRanges } from '../lib/pageRanges.js';
 import { redactionWarning } from '../lib/redaction.js';
+import ProtectOffer from './ProtectOffer.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
 
 /**
  * Split: choose pages/ranges and download them as a new PDF. Pre-filled with
  * the current sidebar selection (or the current page).
  */
-function ExtractPagesDialog({ onClose }) {
-  const { pages, selected, currentPage, extractPages, redactedPages } = useDocumentContext();
+function ExtractPagesDialog({ onClose, onProtect }) {
+  const { pages, selected, currentPage, extractPages, redactedPages, hadPassword } =
+    useDocumentContext();
   const inputId = useId();
   const hintId = useId();
 
@@ -77,6 +79,7 @@ function ExtractPagesDialog({ onClose }) {
           {redactionWarning(redactedCount)}
         </p>
       )}
+      {hadPassword && <ProtectOffer onProtect={onProtect} />}
     </ConfirmDialog>
   );
 }

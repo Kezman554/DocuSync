@@ -131,9 +131,11 @@ export function DocumentProvider({ children }) {
   const [editingAnnotationId, setEditingAnnotationId] = useState(null);
   // Style for the next text box; also updated when a text box is restyled.
   const [textStyle, setTextStyle] = useState(DEFAULT_TEXT_STYLE);
-  // Encrypted file waiting for its password: { name, attempt(password, onStage), cancel() }.
+  // Encrypted file waiting for the user: { id, name, kind: 'open' | 'owner',
+  // attempt(password, onStage), cancel() } — 'owner' (owner password only)
+  // adds confirmRight() for unlocking without the owner password.
   const [passwordRequest, setPasswordRequest] = useState(null);
-  // Encrypted file being unlocked without asking (owner password only): { name, stage }.
+  // Encrypted file being checked before the prompt: { name, stage }.
   const [unlocking, setUnlocking] = useState(null);
   const passwordRequestIdRef = useRef(0);
 
@@ -201,18 +203,23 @@ export function DocumentProvider({ children }) {
   /**
    * Ask the user for `name`'s password until `tryPassword(password, onStage)`
    * succeeds (the dialog shows wrong ones and asks again) or they cancel.
+   * For kind 'owner', confirming they have the right to edit the file
+   * resolves `withoutPassword` (already decrypted with the empty password).
    */
   const askPassword = useCallback(
-    (name, tryPassword) =>
+    (name, tryPassword, { kind = 'open', withoutPassword } = {}) =>
       new Promise((resolve, reject) => {
+        const done = (bytes) => {
+          setPasswordRequest(null);
+          resolve(bytes);
+        };
         setPasswordRequest({
           id: (passwordRequestIdRef.current += 1),
           name,
-          attempt: async (password, onStage) => {
-            const bytes = await tryPassword(password, onStage); // wrong: rejects to the dialog
-            setPasswordRequest(null);
-            resolve(bytes);
-          },
+          kind,
+          // A wrong password rejects to the dialog, which asks again.
+          attempt: async (password, onStage) => done(await tryPassword(password, onStage)),
+          ...(kind === 'owner' && { confirmRight: () => done(withoutPassword) }),
           cancel: () => {
             setPasswordRequest(null);
             reject(new PasswordCancelled());
@@ -225,28 +232,32 @@ export function DocumentProvider({ children }) {
   /**
    * If `file` is encrypted, decrypt it (pdfstudio, in a worker) and return a
    * File of the decrypted bytes, which then becomes the source the viewer,
-   * page model and export all read. A file with only an owner password opens
-   * with the empty password; otherwise the user is asked. Plain files are
-   * returned as they are, without loading the decryption engine.
+   * page model and export all read. Either way the user is asked first: for
+   * the open password, or — if only an owner password restricts the file —
+   * for the owner password or confirmation they may edit it. Plain files
+   * are returned as they are, without loading the decryption engine.
    */
   const prepareFile = useCallback(
     async (file) => {
       const bytes = new Uint8Array(await file.arrayBuffer());
       if (!looksEncrypted(bytes)) return { file };
       const decrypt = (password, onStage) => unlockInBrowser(bytes, password, onStage);
-      let plain;
+      // The empty password opens files that only have an owner password.
+      let withoutPassword;
       let needed = false;
       setUnlocking({ name: file.name, stage: 'loading' });
       try {
-        plain = await decrypt('', (stage) => setUnlocking({ name: file.name, stage }));
+        withoutPassword = await decrypt('', (stage) => setUnlocking({ name: file.name, stage }));
       } catch (err) {
         if (!(err instanceof WrongPasswordError)) throw err;
         needed = true;
       } finally {
         setUnlocking(null);
       }
-      if (needed) plain = await askPassword(file.name, decrypt);
-      if (plain === null) return { file }; // only looked encrypted
+      if (!needed && withoutPassword === null) return { file }; // only looked encrypted
+      const plain = needed
+        ? await askPassword(file.name, decrypt)
+        : await askPassword(file.name, decrypt, { kind: 'owner', withoutPassword });
       return {
         file: new File([plain], file.name, { type: 'application/pdf' }),
         unlocked: { name: file.name, needed },
@@ -289,6 +300,8 @@ export function DocumentProvider({ children }) {
           numPages: pdfDoc.numPages,
           pdfDoc,
           file,
+          // Was encrypted (open or owner password) before it was unlocked.
+          protected: Boolean(prepared[i].unlocked),
         });
       } else {
         failures.push({ name: file.name, message: result.reason?.message });
@@ -506,6 +519,9 @@ export function DocumentProvider({ children }) {
     () => (numbering ? pageNumberLabels(pages.length, numbering) : null),
     [numbering, pages.length]
   );
+
+  // Any loaded file had a password: exports without one should say so.
+  const hadPassword = useMemo(() => sources.some((src) => src.protected), [sources]);
 
   // 1-based positions of pages with redaction boxes (flattened on export).
   const redactedPages = useMemo(() => redactedPositions(pages), [pages]);
@@ -882,6 +898,7 @@ export function DocumentProvider({ children }) {
       watermarkApplies,
       setWatermark,
       redactedPages,
+      hadPassword,
       passwordRequest,
       unlocking,
       dismissNotice,
@@ -953,6 +970,7 @@ export function DocumentProvider({ children }) {
       watermarkApplies,
       setWatermark,
       redactedPages,
+      hadPassword,
       passwordRequest,
       unlocking,
       dismissNotice,

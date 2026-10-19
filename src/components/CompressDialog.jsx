@@ -12,6 +12,7 @@ import ConfirmDialog from './ConfirmDialog.jsx';
 import { redactionWarning } from '../lib/redaction.js';
 import { DEFAULT_PROTECTION, protectionError } from '../lib/protect.js';
 import PasswordFields from './PasswordFields.jsx';
+import ProtectOffer from './ProtectOffer.jsx';
 import './CompressDialog.css';
 
 /**
@@ -19,8 +20,8 @@ import './CompressDialog.css';
  * compress the edited document, see the before/after size (and why, if it
  * didn't help), then choose whether to download the result.
  */
-function CompressDialog({ onClose }) {
-  const { compressDocument, redactedPages } = useDocumentContext();
+function CompressDialog({ onClose, onProtect }) {
+  const { compressDocument, redactedPages, hadPassword } = useDocumentContext();
   const [preset, setPreset] = useState(DEFAULT_PRESET);
   const [stripMetadata, setStripMetadata] = useState(true);
   const [state, setState] = useState('setup'); // setup | working | done
@@ -173,6 +174,7 @@ function CompressDialog({ onClose }) {
       {protect && (
         <PasswordFields value={protection} onChange={setProtection} disabled={working} />
       )}
+      {hadPassword && !protect && !working && <ProtectOffer onProtect={onProtect} />}
       {redactedPages.length > 0 && (
         <p className="confirm-dialog__warning" role="note">
           {redactionWarning(redactedPages.length)}

@@ -111,7 +111,10 @@ describe('unlock on open', () => {
     await user.click(
       within(screen.getByRole('alertdialog')).getByRole('button', { name: /^Delete/ })
     );
+    // The source had a password: plain export says this one won't, then exports.
     await user.click(screen.getByRole('button', { name: 'Export PDF' }));
+    const warning = screen.getByRole('alertdialog', { name: 'Export without a password?' });
+    await user.click(within(warning).getByRole('button', { name: 'Export PDF' }));
     await waitFor(() => expect(downloadBytes).toHaveBeenCalledTimes(1));
     const [bytes, name] = downloadBytes.mock.calls[0];
     expect(name).toBe('locked-edited.pdf');
@@ -137,17 +140,141 @@ describe('unlock on open', () => {
     expect(loadPdfDocument).not.toHaveBeenCalled();
   });
 
-  it('unlocks a file with only an owner password without asking, and says so', async () => {
-    const user = userEvent.setup();
-    await upload(user, fixture('encrypted-owner-only.pdf', 'owner.pdf'));
+  describe('a file with only an owner password', () => {
+    const RESTRICTIONS_NOTICE =
+      '“owner.pdf” had restrictions on printing, copying or editing, removed so it can be edited. Exports won’t have them unless you use Export with password….';
+
+    async function openRestricted(user) {
+      await upload(user, fixture('encrypted-owner-only.pdf', 'owner.pdf'));
+      const dialog = await screen.findByRole('dialog', { name: 'Restricted PDF' });
+      expect(dialog).toHaveTextContent(
+        '“owner.pdf” has restrictions on printing, copying or editing set by its owner.'
+      );
+      return dialog;
+    }
+
+    const expectOpenedDecrypted = async () => {
+      await screen.findByText('Page 1 of 3');
+      expect(screen.queryByRole('dialog', { name: 'Restricted PDF' })).toBeNull();
+      expect(screen.getByRole('alert')).toHaveTextContent(RESTRICTIONS_NOTICE);
+      const [opened] = loadPdfDocument.mock.calls.at(-1);
+      expect(looksEncrypted(await bytesOf(opened))).toBe(false);
+    };
+
+    it('asks first, and unlocks with the owner password after a wrong one', async () => {
+      const user = userEvent.setup();
+      const dialog = await openRestricted(user);
+      expect(loadPdfDocument).not.toHaveBeenCalled(); // nothing opened before the user chose
+      const input = within(dialog).getByLabelText('Owner password');
+
+      await user.type(input, 'not-the-owner{Enter}');
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+        'That password didn’t work. Check it and try again.'
+      );
+      expect(input).toHaveValue('');
+
+      await user.type(input, 'owner-key');
+      await user.click(within(dialog).getByRole('button', { name: 'Unlock' }));
+      await expectOpenedDecrypted();
+      expect(unlockInBrowser).toHaveBeenLastCalledWith(
+        expect.any(Uint8Array),
+        'owner-key',
+        expect.any(Function)
+      );
+    });
+
+    it('unlocks on confirmation that the user may edit it', async () => {
+      const user = userEvent.setup();
+      const dialog = await openRestricted(user);
+      await user.click(
+        within(dialog).getByRole('button', {
+          name: 'I don’t have the owner password, and I have the right to edit this file',
+        })
+      );
+      await expectOpenedDecrypted();
+    });
+
+    it('stays closed on Cancel', async () => {
+      const user = userEvent.setup();
+      const dialog = await openRestricted(user);
+      await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+      expect(await screen.findByText('Couldn’t open that PDF.')).toBeInTheDocument();
+      expect(loadPdfDocument).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe('exporting a once-protected file without a password', () => {
+  beforeEach(() => {
+    setupDom();
+    vi.clearAllMocks();
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  const SENTENCE = 'The original was password-protected, but this new file won’t be.';
+
+  async function openLocked(user) {
+    await upload(user, fixture('encrypted-aes256.pdf', 'locked.pdf'));
+    const dialog = await screen.findByRole('dialog', { name: 'Password needed' });
+    await user.type(within(dialog).getByLabelText('Password'), 'open-sesame{Enter}');
     await screen.findByText('Page 1 of 3');
-    expect(screen.queryByRole('dialog', { name: 'Password needed' })).toBeNull();
-    expect(unlockInBrowser).toHaveBeenCalledWith(expect.any(Uint8Array), '', expect.any(Function));
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      '“owner.pdf” had restrictions on printing, copying or editing, removed so it can be edited.'
+  }
+
+  it('Export PDF says so first, offers Export with password, and still exports', async () => {
+    const user = userEvent.setup();
+    await openLocked(user);
+    await user.click(screen.getByRole('button', { name: 'Export PDF' }));
+    const dialog = screen.getByRole('alertdialog', { name: 'Export without a password?' });
+    expect(dialog).toHaveTextContent(SENTENCE);
+    expect(downloadBytes).not.toHaveBeenCalled();
+
+    // The offer swaps to Export with password.
+    await user.click(within(dialog).getByRole('button', { name: 'Export with password…' }));
+    expect(screen.getByRole('dialog', { name: 'Export with password' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    // Plain export is not blocked.
+    await user.click(screen.getByRole('button', { name: 'Export PDF' }));
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Export PDF' })
     );
-    const [opened] = loadPdfDocument.mock.calls.at(-1);
-    expect(looksEncrypted(await bytesOf(opened))).toBe(false);
+    await waitFor(() => expect(downloadBytes).toHaveBeenCalledTimes(1));
+    expect(looksEncrypted(downloadBytes.mock.calls[0][0])).toBe(false);
+  });
+
+  it('Extract pages and Compress say so in their dialogs', async () => {
+    const user = userEvent.setup();
+    await openLocked(user);
+
+    await user.click(screen.getByRole('button', { name: 'Extract pages…' }));
+    const extract = screen.getByRole('dialog', { name: 'Extract pages' });
+    expect(within(extract).getByRole('note')).toHaveTextContent(SENTENCE);
+    await user.click(within(extract).getByRole('button', { name: 'Export with password…' }));
+    expect(screen.queryByRole('dialog', { name: 'Extract pages' })).toBeNull();
+    expect(screen.getByRole('dialog', { name: 'Export with password' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await user.click(screen.getByRole('button', { name: 'Compress…' }));
+    const compress = screen.getByRole('dialog', { name: 'Compress PDF' });
+    expect(compress).toHaveTextContent(SENTENCE);
+    // Choosing to password-protect the compressed copy removes the warning.
+    await user.click(within(compress).getByRole('checkbox', { name: /Password protect/ }));
+    expect(compress).not.toHaveTextContent(SENTENCE);
+  });
+
+  it('says nothing for a file that never had a password', async () => {
+    const user = userEvent.setup();
+    await openPdf(App, user, await plainPdfFile());
+    await user.click(screen.getByRole('button', { name: 'Extract pages…' }));
+    expect(screen.getByRole('dialog', { name: 'Extract pages' })).not.toHaveTextContent(SENTENCE);
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(screen.getByRole('button', { name: 'Compress…' }));
+    expect(screen.getByRole('dialog', { name: 'Compress PDF' })).not.toHaveTextContent(SENTENCE);
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await user.click(screen.getByRole('button', { name: 'Export PDF' }));
+    await waitFor(() => expect(downloadBytes).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 });
 

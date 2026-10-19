@@ -5,6 +5,7 @@ import ExportImagesDialog from './ExportImagesDialog.jsx';
 import CompressDialog from './CompressDialog.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import ProtectDialog from './ProtectDialog.jsx';
+import ProtectOffer, { UNPROTECTED_SENTENCE } from './ProtectOffer.jsx';
 import { redactionWarning } from '../lib/redaction.js';
 import './Toolbar.css';
 
@@ -22,6 +23,7 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
     notice,
     exportDocument,
     redactedPages,
+    hadPassword,
     requestImagesToPdf,
     dismissNotice,
   } = useDocumentContext();
@@ -31,8 +33,15 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
   const [extractOpen, setExtractOpen] = useState(false);
   const [imagesOpen, setImagesOpen] = useState(false);
   const [compressOpen, setCompressOpen] = useState(false);
-  const [redactionConfirm, setRedactionConfirm] = useState(false);
+  // Plain Export PDF asks first if pages are redacted or a source had a password.
+  const [exportConfirm, setExportConfirm] = useState(false);
   const [protectOpen, setProtectOpen] = useState(false);
+  // "Export with password…" offered from another dialog: swap to it.
+  const openProtect = () => {
+    setExtractOpen(false);
+    setCompressOpen(false);
+    setProtectOpen(true);
+  };
 
   // Copy the FileList before resetting the input (reset empties it).
   const takeFiles = (event) => {
@@ -90,8 +99,11 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
           <button
             type="button"
             className="toolbar__btn"
-            // Redacted pages become images: say so before exporting.
-            onClick={() => (redactedPages.length ? setRedactionConfirm(true) : exportDocument())}
+            // Say so before exporting if redacted pages become images, or
+            // if the original had a password this export won't have.
+            onClick={() =>
+              redactedPages.length || hadPassword ? setExportConfirm(true) : exportDocument()
+            }
             disabled={exporting}
             aria-busy={exporting}
             title="Download a new PDF with your page edits applied"
@@ -213,26 +225,38 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
       </div>
 
       {extractOpen && hasDocument && (
-        <ExtractPagesDialog onClose={() => setExtractOpen(false)} />
+        <ExtractPagesDialog onClose={() => setExtractOpen(false)} onProtect={openProtect} />
       )}
       {imagesOpen && hasDocument && (
         <ExportImagesDialog onClose={() => setImagesOpen(false)} />
       )}
       {compressOpen && hasDocument && (
-        <CompressDialog onClose={() => setCompressOpen(false)} />
+        <CompressDialog onClose={() => setCompressOpen(false)} onProtect={openProtect} />
       )}
       {protectOpen && hasDocument && <ProtectDialog onClose={() => setProtectOpen(false)} />}
-      {redactionConfirm && hasDocument && (
+      {exportConfirm && hasDocument && (
         <ConfirmDialog
-          title="Export with redactions?"
-          message={redactionWarning(redactedPages.length)}
+          title={redactedPages.length ? 'Export with redactions?' : 'Export without a password?'}
+          message={
+            redactedPages.length ? redactionWarning(redactedPages.length) : UNPROTECTED_SENTENCE
+          }
           confirmLabel="Export PDF"
           onConfirm={() => {
-            setRedactionConfirm(false);
+            setExportConfirm(false);
             exportDocument();
           }}
-          onCancel={() => setRedactionConfirm(false)}
-        />
+          onCancel={() => setExportConfirm(false)}
+        >
+          {hadPassword && (
+            <ProtectOffer
+              sentence={redactedPages.length > 0}
+              onProtect={() => {
+                setExportConfirm(false);
+                openProtect();
+              }}
+            />
+          )}
+        </ConfirmDialog>
       )}
 
       {notice && (
