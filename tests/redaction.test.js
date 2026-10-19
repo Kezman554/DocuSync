@@ -11,6 +11,7 @@ import {
   PDFDocument,
   PDFName,
   PDFRawStream,
+  PDFString,
   StandardFonts,
   degrees,
 } from 'pdf-lib';
@@ -103,16 +104,23 @@ async function pageTexts(bytes) {
 }
 
 /**
- * Every place `word` could hide in the file: the raw bytes, and every
- * stream decoded — as plain text or as the hex strings pdf-lib's drawText
- * writes (<48656C6C6F> Tj).
+ * Every place `word` could hide in the file: the raw bytes, every object
+ * (including dicts packed in object streams) and every stream decoded — as
+ * plain text, as the hex strings pdf-lib's drawText writes (<48656C6C6F>
+ * Tj), or as UTF-16BE hex (how pdf-lib stores form-field values).
  */
 async function fileContains(bytes, word) {
-  const hex = Buffer.from(word, 'latin1').toString('hex');
+  const hexes = [
+    Buffer.from(word, 'latin1').toString('hex'),
+    Buffer.from(word, 'utf16le').swap16().toString('hex'),
+  ];
   const haystacks = [Buffer.from(bytes).toString('latin1')];
   const doc = await PDFDocument.load(bytes, { updateMetadata: false });
   for (const [, object] of doc.context.enumerateIndirectObjects()) {
-    if (!(object instanceof PDFRawStream)) continue;
+    if (!(object instanceof PDFRawStream)) {
+      haystacks.push(object.toString());
+      continue;
+    }
     const filter = object.dict.get(PDFName.of('Filter'));
     let data = Buffer.from(object.contents);
     if (filter?.toString() === '/FlateDecode') {
@@ -124,7 +132,9 @@ async function fileContains(bytes, word) {
     }
     haystacks.push(data.toString('latin1'));
   }
-  return haystacks.some((h) => h.includes(word) || h.toLowerCase().includes(hex));
+  return haystacks.some(
+    (h) => h.includes(word) || hexes.some((hex) => h.toLowerCase().includes(hex))
+  );
 }
 
 /** pdf.js operators on page `n`, e.g. to prove a page is just one image. */
@@ -238,6 +248,7 @@ describe('redaction helpers', () => {
     expect(redactionWarning(3)).toMatch(/3 redacted pages\. They become images/);
     expect(redactionWarning(2)).toMatch(/no longer be selectable or searchable/);
     expect(redactionWarning(2)).toMatch(/title, author, subject and keywords/);
+    expect(redactionWarning(1)).toMatch(/Form fields that also appear on a redacted page/);
   });
 });
 
@@ -450,5 +461,118 @@ describe('redaction export (acceptance: extraction, not appearance)', () => {
     await expect(
       buildPdf(src(source), pages, { flatten: async () => [] })
     ).rejects.toThrow(/Couldn’t flatten the redacted pages/);
+  });
+});
+
+// References from unredacted pages into a redacted one: pdf-lib's copyPages
+// follows every reference, so without care these drag the redacted page's
+// objects (or a shared form field's value) into the export.
+describe('redaction across references between pages', () => {
+  const BOX_P1 = { x: 60, y: 580, width: 240, height: 60 };
+
+  /** Two pages; page 1 has body text under and outside the box. */
+  async function twoPages() {
+    const doc = await PDFDocument.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const p1 = doc.addPage([612, 792]);
+    p1.drawText('PAGEONE-UNDER', { x: 72, y: 620, size: 12, font });
+    p1.drawText('PAGEONE-OUTSIDE', { x: 72, y: 300, size: 12, font });
+    const p2 = doc.addPage([612, 792]);
+    p2.drawText('Page two body', { x: 72, y: 700, size: 12, font });
+    return { doc, p1, p2 };
+  }
+
+  const redactFirst = () => withBoxes(createPageModel(2), { 0: [BOX_P1] });
+  const exportBoth = (bytes, pages) => buildPdf(src(bytes), pages, { flatten: nodeFlatten() });
+
+  async function fieldValues(bytes) {
+    const pdf = await loadPdf(bytes);
+    const values = [];
+    for (let n = 1; n <= pdf.numPages; n += 1) {
+      const annots = await (await pdf.getPage(n)).getAnnotations();
+      values.push(Object.fromEntries(annots.filter((a) => a.fieldName).map((a) => [a.fieldName, a.fieldValue])));
+    }
+    await pdf.destroy();
+    return values;
+  }
+
+  it('drops a form field whose widget is on a redacted page from every page', async () => {
+    const { doc, p1, p2 } = await twoPages();
+    const form = doc.getForm();
+    const shared = form.createTextField('account');
+    shared.setText('FIELDVALUE-4242');
+    shared.addToPage(p1, { x: 72, y: 600, width: 200, height: 24 });
+    shared.addToPage(p2, { x: 72, y: 600, width: 200, height: 24 });
+    // A field only on the unredacted page is left alone.
+    const other = form.createTextField('other');
+    other.setText('KEEP-ME-77');
+    other.addToPage(p2, { x: 72, y: 400, width: 200, height: 24 });
+    const bytes = await doc.save();
+
+    // Control: unredacted, the value is in the file on both pages.
+    const plain = await buildPdf(src(bytes), createPageModel(2));
+    expect(await fileContains(plain, 'FIELDVALUE-4242')).toBe(true);
+    expect((await fieldValues(plain))[1]).toMatchObject({ account: 'FIELDVALUE-4242' });
+
+    const out = await exportBoth(bytes, redactFirst());
+    expect(await fileContains(out, 'FIELDVALUE-4242')).toBe(false);
+    expect((await pageTexts(out)).join(' ')).not.toContain('FIELDVALUE');
+    const values = await fieldValues(out);
+    expect(values[0]).toEqual({});
+    expect(values[1]).toEqual({ other: 'KEEP-ME-77' });
+    // Nothing of page 1 came along with the field.
+    expect(await fileContains(out, 'PAGEONE')).toBe(false);
+  });
+
+  it('a link to the redacted page doesn’t bring its content along', async () => {
+    const { doc, p1, p2 } = await twoPages();
+    const link = doc.context.register(
+      doc.context.obj({
+        Type: 'Annot',
+        Subtype: 'Link',
+        Rect: [72, 680, 200, 720],
+        Border: [0, 0, 0],
+        Dest: [p1.ref, PDFName.of('Fit')],
+      })
+    );
+    p2.node.set(PDFName.of('Annots'), doc.context.obj([link]));
+    const bytes = await doc.save();
+    expect(await fileContains(await buildPdf(src(bytes), createPageModel(2)), 'PAGEONE-UNDER')).toBe(true);
+
+    const out = await exportBoth(bytes, redactFirst());
+    expect(await fileContains(out, 'PAGEONE-UNDER')).toBe(false);
+    expect(await fileContains(out, 'PAGEONE-OUTSIDE')).toBe(false);
+    expect((await pageTexts(out))[1]).toBe('Page two body');
+  });
+
+  it('a comment reply doesn’t bring the redacted page’s comment along', async () => {
+    const { doc, p1, p2 } = await twoPages();
+    const comment = doc.context.register(
+      doc.context.obj({
+        Type: 'Annot',
+        Subtype: 'Text',
+        Rect: [300, 600, 320, 620],
+        Contents: PDFString.of('COMMENT-SECRET'),
+        P: p1.ref,
+      })
+    );
+    p1.node.set(PDFName.of('Annots'), doc.context.obj([comment]));
+    const reply = doc.context.register(
+      doc.context.obj({
+        Type: 'Annot',
+        Subtype: 'Text',
+        Rect: [300, 600, 320, 620],
+        Contents: PDFString.of('A-REPLY'),
+        IRT: comment,
+        P: p2.ref,
+      })
+    );
+    p2.node.set(PDFName.of('Annots'), doc.context.obj([reply]));
+    const bytes = await doc.save();
+
+    const out = await exportBoth(bytes, redactFirst());
+    expect(await fileContains(out, 'COMMENT-SECRET')).toBe(false);
+    expect(await fileContains(out, 'PAGEONE')).toBe(false);
+    expect(await fileContains(out, 'A-REPLY')).toBe(true); // page 2's own comment stays
   });
 });

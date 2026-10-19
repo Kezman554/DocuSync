@@ -93,11 +93,8 @@ export async function buildPdf(sources, pages, { pageNumbers, watermark, flatten
     // copyPages also flattens inherited attributes (MediaBox, Resources,
     // Rotate) onto each copied page, so pages stand alone in the new tree.
     // One call per source (and target) lets pages share copied fonts/images.
-    for (const [target, wanted] of [
-      [output, slots.filter((i) => !redacted[i])],
-      [staging, slots.filter((i) => redacted[i])],
-    ]) {
-      if (!wanted.length) continue;
+    const copyInto = async (target, wanted) => {
+      if (!wanted.length) return;
       const copied = await target.copyPages(
         source,
         wanted.map((i) => pages[i].sourcePage - 1)
@@ -105,7 +102,21 @@ export async function buildPdf(sources, pages, { pageNumbers, watermark, flatten
       copied.forEach((page, k) => {
         placed[wanted[k]] = page;
       });
+    };
+    const toStaging = slots.filter((i) => redacted[i]);
+    const toOutput = slots.filter((i) => !redacted[i]);
+    // Staging first: it needs the redacted pages whole. Then cut them off
+    // before anything is copied into the export.
+    await copyInto(staging, toStaging);
+    if (toStaging.length) {
+      isolateRedactedPages(
+        source,
+        toStaging.map((i) => pages[i].sourcePage - 1),
+        toOutput.map((i) => pages[i].sourcePage - 1),
+        pdfLib
+      );
     }
+    await copyInto(output, toOutput);
   }
   output.setProducer('DocuSync (pdf-lib)');
 
@@ -178,6 +189,71 @@ export async function buildPdf(sources, pages, { pageNumbers, watermark, flatten
       );
       await drawAnnotations(page, [number], embed, pdfLib);
     }
+  }
+}
+
+/**
+ * Cut every path from the pages about to be exported to the content of the
+ * redacted ones, in the in-memory `source` (after the redacted pages went to
+ * staging). copyPages follows references, so a link's /Dest, a reply's /IRT
+ * or a widget's /Parent → /Kids would otherwise copy a redacted page, or its
+ * annotations, into the export.
+ *
+ * - Redacted pages and their annotations are emptied, so whatever still
+ *   points at them finds nothing.
+ * - A form field with a widget on a redacted page loses its widgets on the
+ *   kept pages too: the value is shared between them, so showing it
+ *   elsewhere would repeat what was redacted. Other fields are untouched.
+ */
+function isolateRedactedPages(source, redactedIndices, keptIndices, { PDFName, PDFRef }) {
+  const { context } = source;
+  const all = source.getPages();
+  const redactedNodes = new Set(redactedIndices.map((n) => all[n].node));
+  const keptPages = keptIndices.map((n) => all[n]).filter((p) => !redactedNodes.has(p.node));
+  const Subtype = PDFName.of('Subtype');
+  const isWidget = (dict) => dict?.get(Subtype) === PDFName.of('Widget');
+  const annotationsOf = (node) => node.Annots()?.asArray() ?? [];
+
+  // The top of a widget's /Parent chain is its field (a widget with no
+  // parent is its own field).
+  const fieldOf = (entry) => {
+    let field = entry;
+    for (let depth = 0; depth < 32; depth += 1) {
+      const parent = context.lookup(field)?.get?.(PDFName.of('Parent'));
+      if (!(parent instanceof PDFRef)) break;
+      field = parent;
+    }
+    return field;
+  };
+
+  const redactedFields = new Set();
+  for (const node of redactedNodes) {
+    for (const entry of annotationsOf(node)) {
+      const dict = context.lookup(entry);
+      if (isWidget(dict)) redactedFields.add(fieldOf(entry));
+    }
+  }
+
+  if (redactedFields.size) {
+    for (const page of keptPages) {
+      const entries = annotationsOf(page.node);
+      const kept = entries.filter(
+        (entry) => !(isWidget(context.lookup(entry)) && redactedFields.has(fieldOf(entry)))
+      );
+      if (kept.length !== entries.length) page.node.set(PDFName.of('Annots'), context.obj(kept));
+    }
+  }
+
+  const Type = PDFName.of('Type');
+  const empty = (dict, keep) => {
+    for (const key of dict.keys()) if (!keep.includes(key)) dict.delete(key);
+  };
+  for (const node of redactedNodes) {
+    for (const entry of annotationsOf(node)) {
+      const dict = context.lookup(entry);
+      if (dict?.keys) empty(dict, [Type, Subtype]);
+    }
+    empty(node, [Type]);
   }
 }
 

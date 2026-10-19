@@ -575,10 +575,7 @@ DocuSync — Progress Log
   - Selectable text on redacted pages would need real content-stream
     editing (remove Tj ops / glyphs under the box), not possible in pdf-lib.
   - Form fields: a redacted page's widgets become pixels and are dropped.
-    Not checked: whether a field whose widgets span a redacted and an
-    unredacted page keeps its value (/V) via the unredacted widget's
-    /Parent. Any future "keep forms" work must not carry fields from
-    redacted pages.
+    (Shared fields across redacted/unredacted pages: closed, see below.)
   - Attachments, document-level JavaScript, outlines/bookmarks and named
     destinations aren't copied by export today; bookmark titles could
     repeat redacted text if that ever changes.
@@ -588,3 +585,32 @@ DocuSync — Progress Log
     flattened page, so it's safe, but it is re-rasterised a second time.
   - Hidden text (white text, text under images, invisible render mode) on
     UNredacted pages is untouched: redaction only applies to boxed pages.
+
+2026-10-19 — Redaction: references into redacted pages (closes open item)
+- Fixture: one text field, value on widgets on pages 1 and 2; page 1
+  redacted. Result before the fix: the value WAS in the export — page 2's
+  widget kept it (/V on the shared field, plus its appearance stream), and
+  copyPages followed /Parent → /Kids into page 1's own widget and its
+  appearance. The same path exists for any reference into a redacted page:
+  a link's /Dest copied the whole redacted page (content stream and all),
+  a reply's /IRT copied the redacted page's comment text.
+- The test helper had missed it too: fileContains now also scans every
+  non-stream object (dicts packed in object streams) and UTF-16BE hex,
+  which is how pdf-lib stores field values.
+- Fix (exportPdf isolateRedactedPages, run on the in-memory source after
+  the redacted pages are copied to staging, before kept pages are copied):
+  (1) redacted pages and their annotation dicts are emptied, so any
+  reference that still reaches them copies nothing; (2) rule chosen: a
+  field with a widget on a redacted page loses its widgets on every page.
+  Chosen over "drop all field values when anything is redacted" because it
+  only touches fields that actually showed on a redacted page — other
+  fields keep working — and removing the widgets (not just /V) also cuts
+  the /Parent → /Kids path back to the redacted page. Users would notice a
+  field vanishing from a page they didn't redact, so the export warning
+  says so in one sentence.
+- Tests: 356 passing (+3: shared form field, link /Dest, reply /IRT; each
+  with a control showing the data is otherwise exported).
+- Still noticed, not built or verified: links/replies pointing at pages
+  the user DELETED (or left out of an extract) very likely drag those
+  pages' content into the export the same way (same copyPages path). Not a redaction leak, but worth the same
+  treatment some day.

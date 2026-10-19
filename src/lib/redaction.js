@@ -59,7 +59,8 @@ export function redactionWarning(count) {
   return (
     `This export includes ${pages}. ${them}: text on ${count === 1 ? 'it' : 'them'} ` +
     'will no longer be selectable or searchable, and anything under a redaction box ' +
-    'is removed for good. The original document’s title, author, subject and ' +
+    'is removed for good. Form fields that also appear on a redacted page are ' +
+    'removed from every page. The original document’s title, author, subject and ' +
     'keywords won’t be copied, since they can repeat what was redacted.'
   );
 }
