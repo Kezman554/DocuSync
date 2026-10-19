@@ -679,13 +679,21 @@ DocuSync — Progress Log
   hadPassword). Plain export then says, before downloading, "The original
   was password-protected, but this new file won't be." with an Export with
   password… button (ProtectOffer): Export PDF via a confirm dialog (merged
-  with the redaction one when both apply), Extract pages and Compress
-  inline in their dialogs (Compress hides it once Password protect is
-  ticked). Plain export stays one confirm away; never blocked.
-- The offer opens Export with password, which exports the whole document
-  — from Extract pages that means the extract choice is dropped.
+  with the redaction one when both apply), Compress inline in its dialog.
+  Plain export stays one confirm away; never blocked.
 - Tests: 384 passing. protectUi: the owner-only test now covers prompt →
   wrong → owner-key, confirmation, and Cancel; the edit-and-export test
   goes through the new warning; +3 for the warning (shown for
   encrypted-aes256.pdf on all three paths, not for a plain file).
 - Main bundle 296.45 kB / 96.66 gzip (+1.4 kB).
+
+2026-10-19 — Extract pages: password protect the extract itself
+- Extract pages has its own "Password protect" checkbox with the same
+  fields as Compress; it encrypts only the extracted pages, as the last
+  step (extractPages(positions, { protection, onStage }) → runExport). The
+  once-protected warning shows there without a button and hides when the
+  box is ticked. Export with password… from Extract was removed: it
+  exported every page, so an extract sent on would have carried them all.
+- Tests: 385 passing (+1: pages 1–2 of the 3-page encrypted fixture,
+  password ticked → pdf.js refuses it without the password; with it, two
+  pages, page 3's text absent).

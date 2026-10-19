@@ -676,7 +676,8 @@ export function DocumentProvider({ children }) {
    * rotations included) into a new PDF and download it.
    */
   const extractPages = useCallback(
-    (positions) => runExport(positions, (name) => extractFileName(name, positions)),
+    (positions, { protection, onStage } = {}) =>
+      runExport(positions, (name) => extractFileName(name, positions), { protection, onStage }),
     [runExport]
   );
   const dismissNotice = useCallback(() => setNotice(null), []);

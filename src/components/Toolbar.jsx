@@ -38,7 +38,6 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
   const [protectOpen, setProtectOpen] = useState(false);
   // "Export with password…" offered from another dialog: swap to it.
   const openProtect = () => {
-    setExtractOpen(false);
     setCompressOpen(false);
     setProtectOpen(true);
   };
@@ -225,7 +224,7 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
       </div>
 
       {extractOpen && hasDocument && (
-        <ExtractPagesDialog onClose={() => setExtractOpen(false)} onProtect={openProtect} />
+        <ExtractPagesDialog onClose={() => setExtractOpen(false)} />
       )}
       {imagesOpen && hasDocument && (
         <ExportImagesDialog onClose={() => setImagesOpen(false)} />

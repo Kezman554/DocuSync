@@ -249,10 +249,12 @@ describe('exporting a once-protected file without a password', () => {
     await user.click(screen.getByRole('button', { name: 'Extract pages…' }));
     const extract = screen.getByRole('dialog', { name: 'Extract pages' });
     expect(within(extract).getByRole('note')).toHaveTextContent(SENTENCE);
-    await user.click(within(extract).getByRole('button', { name: 'Export with password…' }));
-    expect(screen.queryByRole('dialog', { name: 'Extract pages' })).toBeNull();
-    expect(screen.getByRole('dialog', { name: 'Export with password' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    // Its own checkbox replaces the Export with password… button (which
+    // would export every page, not the extract).
+    expect(within(extract).queryByRole('button', { name: 'Export with password…' })).toBeNull();
+    await user.click(within(extract).getByRole('checkbox', { name: /Password protect/ }));
+    expect(extract).not.toHaveTextContent(SENTENCE);
+    await user.click(within(extract).getByRole('button', { name: 'Cancel' }));
 
     await user.click(screen.getByRole('button', { name: 'Compress…' }));
     const compress = screen.getByRole('dialog', { name: 'Compress PDF' });
@@ -260,6 +262,45 @@ describe('exporting a once-protected file without a password', () => {
     // Choosing to password-protect the compressed copy removes the warning.
     await user.click(within(compress).getByRole('checkbox', { name: /Password protect/ }));
     expect(compress).not.toHaveTextContent(SENTENCE);
+  });
+
+  it('Extract pages encrypts just the chosen pages', async () => {
+    const user = userEvent.setup();
+    await openLocked(user); // three pages: "Locked page one/two/three"
+    await user.click(screen.getByRole('button', { name: 'Extract pages…' }));
+    const dialog = screen.getByRole('dialog', { name: 'Extract pages' });
+    const pagesInput = within(dialog).getByLabelText(/^Pages/);
+    await user.clear(pagesInput);
+    await user.type(pagesInput, '1-2');
+
+    await user.click(within(dialog).getByRole('checkbox', { name: /Password protect/ }));
+    const confirm = within(dialog).getByRole('button', { name: 'Extract 2 pages' });
+    expect(confirm).toBeDisabled(); // needs a password first
+    await user.type(within(dialog).getByLabelText('Password to open the file'), 'extract-secret');
+    await user.type(within(dialog).getByLabelText('Type it again'), 'extract-secret');
+    await user.click(confirm);
+
+    await waitFor(() => expect(downloadBytes).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('dialog', { name: 'Extract pages' })).toBeNull();
+    const [bytes, name] = downloadBytes.mock.calls[0];
+    expect(name).toBe('locked-pages-1-2.pdf');
+    // Encrypted from the extract itself, as the last step.
+    expect(looksEncrypted(lockInBrowser.mock.calls[0][0])).toBe(false);
+
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const open = (password) =>
+      pdfjs.getDocument({ data: new Uint8Array(bytes), password, disableFontFace: true }).promise;
+    await expect(open()).rejects.toMatchObject({ name: 'PasswordException' });
+    const pdf = await open('extract-secret');
+    expect(pdf.numPages).toBe(2);
+    const texts = [];
+    for (let n = 1; n <= pdf.numPages; n += 1) {
+      const content = await (await pdf.getPage(n)).getTextContent();
+      texts.push(content.items.map((i) => i.str).join(' ').trim());
+    }
+    await pdf.destroy();
+    expect(texts).toEqual(['Locked page one', 'Locked page two']);
+    expect(texts.join(' ')).not.toContain('three');
   });
 
   it('says nothing for a file that never had a password', async () => {

@@ -2,14 +2,22 @@ import { useId, useState } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import { formatPageRanges, parsePageRanges } from '../lib/pageRanges.js';
 import { redactionWarning } from '../lib/redaction.js';
+import { DEFAULT_PROTECTION, protectionError } from '../lib/protect.js';
+import PasswordFields from './PasswordFields.jsx';
 import ProtectOffer from './ProtectOffer.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
 
+const STAGE_LABELS = {
+  loading: 'Loading encryption…',
+  working: 'Encrypting…',
+};
+
 /**
  * Split: choose pages/ranges and download them as a new PDF. Pre-filled with
- * the current sidebar selection (or the current page).
+ * the current sidebar selection (or the current page). Optionally password
+ * protects just those pages, encrypting as the last step.
  */
-function ExtractPagesDialog({ onClose, onProtect }) {
+function ExtractPagesDialog({ onClose }) {
   const { pages, selected, currentPage, extractPages, redactedPages, hadPassword } =
     useDocumentContext();
   const inputId = useId();
@@ -19,27 +27,42 @@ function ExtractPagesDialog({ onClose, onProtect }) {
     const positions = pages.flatMap((p, i) => (selected.has(p.id) ? [i + 1] : []));
     return formatPageRanges(positions.length ? positions : [currentPage]);
   });
+  const [protect, setProtect] = useState(false);
+  const [protection, setProtection] = useState(DEFAULT_PROTECTION);
+  const [stage, setStage] = useState(null); // null | 'building' | 'loading' | 'working'
+  const working = stage !== null;
 
   const result = parsePageRanges(value, pages.length);
   const count = result.pages?.length ?? 0;
   const redactedCount = result.pages?.filter((n) => redactedPages.includes(n)).length ?? 0;
+  const protectionInvalid = protect && Boolean(protectionError(protection));
 
-  const submit = () => {
-    if (!result.pages) return;
-    onClose();
-    extractPages(result.pages);
+  const submit = async () => {
+    if (!result.pages || protectionInvalid || working) return;
+    if (!protect) {
+      onClose();
+      extractPages(result.pages);
+      return;
+    }
+    // Encrypting takes a moment: stay open to show it; the toolbar explains a failure.
+    setStage('building');
+    const ok = await extractPages(result.pages, { protection, onStage: setStage });
+    setStage(null);
+    if (ok) onClose();
   };
 
+  const extractLabel = count > 1 ? `Extract ${count} pages` : 'Extract page';
   return (
     <ConfirmDialog
       role="dialog"
+      className={protect ? 'protect-dialog' : ''}
       title="Extract pages"
       message="Save the chosen pages as a new PDF. Page numbers are as shown in the sidebar, and any rotation is kept."
-      confirmLabel={count > 1 ? `Extract ${count} pages` : 'Extract page'}
-      confirmDisabled={!result.pages}
+      confirmLabel={working ? STAGE_LABELS[stage] ?? 'Exporting…' : extractLabel}
+      confirmDisabled={!result.pages || protectionInvalid || working}
       focusCancel={false}
       onConfirm={submit}
-      onCancel={onClose}
+      onCancel={working ? () => {} : onClose}
     >
       <div className="confirm-dialog__field">
         <label htmlFor={inputId} className="confirm-dialog__label">
@@ -61,6 +84,7 @@ function ExtractPagesDialog({ onClose, onProtect }) {
           aria-describedby={hintId}
           autoComplete="off"
           spellCheck={false}
+          disabled={working}
           autoFocus
         />
         <span
@@ -73,13 +97,26 @@ function ExtractPagesDialog({ onClose, onProtect }) {
           {result.error ??
             `${count} of ${pages.length} ${pages.length === 1 ? 'page' : 'pages'}: ${formatPageRanges(result.pages)}`}
         </span>
+        <label className="confirm-dialog__option">
+          <input
+            type="checkbox"
+            checked={protect}
+            onChange={(event) => setProtect(event.target.checked)}
+            disabled={working}
+          />
+          Password protect
+          <span className="confirm-dialog__option-note">AES-256, these pages only</span>
+        </label>
       </div>
+      {protect && (
+        <PasswordFields value={protection} onChange={setProtection} disabled={working} />
+      )}
       {redactedCount > 0 && (
         <p className="confirm-dialog__warning" role="note">
           {redactionWarning(redactedCount)}
         </p>
       )}
-      {hadPassword && <ProtectOffer onProtect={onProtect} />}
+      {hadPassword && !protect && <ProtectOffer />}
     </ConfirmDialog>
   );
 }
