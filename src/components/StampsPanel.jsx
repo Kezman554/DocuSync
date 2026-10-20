@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import { useStamps } from '../hooks/StampsContext.jsx';
-import { INITIALS_PRESETS, normalizeInitials } from '../lib/stamps.js';
+import { DEFAULT_INK, INITIALS_PRESETS, normalizeInitials } from '../lib/stamps.js';
 import { STANDARD_FONTS, textLayout } from '../lib/textLayout.js';
 import { measureTextWidth } from '../lib/measureText.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
@@ -128,7 +128,7 @@ function InitialsForm() {
   const ids = { input: useId(), hint: useId(), ink: useId() };
   const [value, setValue] = useState('');
   const [preset, setPreset] = useState(INITIALS_PRESETS[0].id);
-  const [color, setColor] = useState('#000000');
+  const [color, setColor] = useState(DEFAULT_INK);
   const [touched, setTouched] = useState(false);
   const result = normalizeInitials(value);
 

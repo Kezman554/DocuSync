@@ -45,9 +45,9 @@
   width: 100%;
   height: 2rem;
   padding: 0.1rem;
-  border: 1px solid #4a4d54;
-  border-radius: 6px;
-  background: #1e1f23;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-tile);
+  background: var(--raised);
 }
 
 .watermark__image {
@@ -59,7 +59,7 @@
 
 .watermark__image-name {
   font-size: 0.8rem;
-  color: #b4b8be;
+  color: var(--text-secondary);
 }
 
 .watermark__angle {
@@ -78,8 +78,9 @@
 }
 
 .watermark__preset--on {
-  border-color: #3a82f6;
-  background: #2d4a7c;
+  border-color: var(--accent-fill);
+  background: var(--accent-fill);
+  color: var(--on-accent);
 }
 
 .watermark__pages-input {

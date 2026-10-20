@@ -25,31 +25,26 @@
 
 /* Test marker: a translucent highlighter box. */
 .annotation--marker {
-  background: rgba(255, 213, 0, 0.28);
-  border: 2px solid rgba(230, 170, 0, 0.9);
-  border-radius: 3px;
+  background: var(--marker-fill);
+  border: 2px solid var(--marker-edge);
+  border-radius: var(--radius-paper);
 }
 
 /* Redaction: hatched, so what will be removed reads clearly but stays
    visible underneath until export, where it's blacked out for good. */
 .annotation--redaction {
-  background: repeating-linear-gradient(
-    -45deg,
-    rgba(17, 17, 17, 0.6) 0 4px,
-    rgba(17, 17, 17, 0.15) 4px 8px
-  );
-  border: 2px solid #c01c28;
+  background: var(--redaction-hatch);
+  border: 2px solid var(--redaction-edge);
 }
 
 .annotation--selected,
 .annotation:focus-visible {
-  border-color: #3a82f6;
-  box-shadow: 0 0 0 1px #fff, 0 0 0 3px rgba(58, 130, 246, 0.6);
+  border-color: var(--selection-on-page);
+  box-shadow: var(--selection-ring);
 }
 
 .annotation--draft {
-  background: rgba(58, 130, 246, 0.12);
-  border: 1.5px dashed #3a82f6;
+  border: 1.5px dashed var(--selection-on-page);
   pointer-events: none;
 }
 
@@ -57,9 +52,9 @@
   position: absolute;
   width: 12px;
   height: 12px;
-  border-radius: 2px;
-  border: 1.5px solid #3a82f6;
-  background: #fff;
+  border-radius: var(--radius-paper);
+  border: 1.5px solid var(--selection-on-page);
+  background: var(--page);
   /* Generous hit area on touch screens. */
   touch-action: none;
 }
@@ -77,17 +72,17 @@
   height: 22px;
   padding: 0;
   border: none;
-  border-radius: 50%;
-  background: #d64545;
-  color: #fff;
+  border-radius: var(--radius-pill);
+  background: var(--danger);
+  color: var(--on-danger);
   font-size: 0.95rem;
   line-height: 22px;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 4px var(--shadow);
 }
 
 .annotation__delete:hover {
-  background: #bb3838;
+  background: var(--danger-fill-hover);
 }
 
 .annotation-layer__sr-only {
@@ -118,22 +113,22 @@
 /* Text: no fill; outline only while hovered, selected or edited. */
 .annotation--text {
   border: 1px dashed transparent;
-  border-radius: 2px;
+  border-radius: var(--radius-paper);
 }
 
 .annotation--text:hover {
-  border-color: rgba(58, 130, 246, 0.6);
+  border-color: var(--selection-on-page);
 }
 
 .annotation--text.annotation--selected,
 .annotation--text:focus-visible {
-  border: 1px solid #3a82f6;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--selection-on-page);
+  box-shadow: 0 0 0 1px var(--page-veil);
 }
 
 .annotation--editing {
   cursor: text;
-  border: 1px dashed #3a82f6;
+  border: 1px dashed var(--selection-on-page);
 }
 
 /* The text box's own (unrotated) frame, centred and turned with the page. */
@@ -158,7 +153,7 @@
   padding: 0 2px 0 0;
   border: none;
   outline: none;
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--page-veil);
   resize: none;
   overflow: hidden;
   white-space: pre;
@@ -170,13 +165,13 @@
 }
 
 .annotation--image:hover {
-  border-color: rgba(58, 130, 246, 0.6);
+  border-color: var(--selection-on-page);
 }
 
 .annotation--image.annotation--selected,
 .annotation--image:focus-visible {
-  border-color: #3a82f6;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8);
+  border-color: var(--selection-on-page);
+  box-shadow: 0 0 0 1px var(--page-veil);
 }
 
 .annotation__image {

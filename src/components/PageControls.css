@@ -11,10 +11,10 @@
   gap: 0.5rem 1rem;
   max-width: calc(100% - 1rem);
   padding: 0.4rem 0.6rem;
-  border-radius: 10px;
-  background: rgba(38, 40, 45, 0.95);
-  border: 1px solid #3a3d44;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  border: 1px solid var(--divider);
+  box-shadow: 0 4px 16px var(--shadow);
   backdrop-filter: blur(4px);
 }
 
@@ -30,15 +30,15 @@
   line-height: 1;
   min-width: 2rem;
   padding: 0.35rem 0.6rem;
-  border-radius: 6px;
-  border: 1px solid #4a4d54;
-  background: #34363b;
-  color: #e6e6e6;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--outline);
+  background: var(--raised);
+  color: var(--text);
   cursor: pointer;
 }
 
 .page-controls__btn:hover:not(:disabled) {
-  background: #3f424a;
+  background: var(--ground);
 }
 
 .page-controls__btn:disabled {
@@ -48,14 +48,14 @@
 
 .page-controls__label {
   font-size: 0.85rem;
-  color: #d4d6da;
+  color: var(--text);
   white-space: nowrap;
 }
 
 /* "2 pages" next to the rotate buttons when acting on a multi-selection. */
 .page-controls__label--count {
   font-size: 0.75rem;
-  color: #9aa0a6;
+  color: var(--text-secondary);
 }
 
 .page-controls__label--zoom {
@@ -68,13 +68,13 @@
 }
 
 .page-controls__btn--active {
-  border-color: #3a82f6;
-  background: #3a82f6;
-  color: #fff;
+  border-color: var(--accent-fill);
+  background: var(--accent-fill);
+  color: var(--on-accent);
 }
 
 .page-controls__btn--active:hover:not(:disabled) {
-  background: #2f6fd8;
+  background: var(--accent-fill-hover);
 }
 
 .page-controls__file-input {

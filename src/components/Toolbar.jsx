@@ -6,6 +6,7 @@ import CompressDialog from './CompressDialog.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import ProtectDialog from './ProtectDialog.jsx';
 import ProtectOffer, { UNPROTECTED_SENTENCE } from './ProtectOffer.jsx';
+import ThemeToggle from './ThemeToggle.jsx';
 import { redactionWarning } from '../lib/redaction.js';
 import './Toolbar.css';
 
@@ -209,6 +210,7 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
             Close
           </button>
         )}
+        <ThemeToggle />
         <input
           ref={inputRef}
           type="file"

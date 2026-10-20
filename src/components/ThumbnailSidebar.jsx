@@ -15,8 +15,9 @@ import './ThumbnailSidebar.css';
 
 const DRAG_TYPE = 'application/x-docusync-page';
 
-// Badge colours distinguishing source documents once more than one is loaded.
-const SOURCE_COLOURS = ['#3a82f6', '#e5a50a', '#2ec27e', '#e66100', '#c061cb', '#f66151'];
+// Badge colours distinguishing source documents once more than one is loaded
+// (--source-1 … --source-6 in src/styles/tokens.css).
+const SOURCE_COLOURS = [1, 2, 3, 4, 5, 6].map((n) => `var(--source-${n})`);
 
 function ThumbnailSidebar({ open }) {
   const {

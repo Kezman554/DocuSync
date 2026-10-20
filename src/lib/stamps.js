@@ -22,6 +22,9 @@ import { STANDARD_FONTS } from './textLayout.js';
 
 export const STAMP_KINDS = ['tick', 'initials', 'signature'];
 
+/** Ink for new initials until the user picks another colour. */
+export const DEFAULT_INK = '#000000';
+
 /** Built-in tick presets, drawn with the ZapfDingbats standard font. */
 export const BUILT_IN_STAMPS = [
   ['tick', 'Tick', '✔', '#1a7f37'],
@@ -71,7 +74,7 @@ export function cleanName(name, fallback = 'Stamp') {
 }
 
 /** A new (unsaved) initials stamp in one of the preset looks. */
-export function createInitialsStamp(initials, presetId = 'script', color = '#000000') {
+export function createInitialsStamp(initials, presetId = 'script', color = DEFAULT_INK) {
   const result = normalizeInitials(initials);
   if (result.error) throw new Error(result.error);
   const preset = INITIALS_PRESETS.find((p) => p.id === presetId) ?? INITIALS_PRESETS[0];

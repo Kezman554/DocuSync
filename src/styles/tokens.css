@@ -1,0 +1,96 @@
+/*
+ * Design tokens: the only place colour, font and radius literals live
+ * (DESIGN.md › Tokens, Enforcement). Components use var(--…) only.
+ *
+ * The mode is set on <html data-theme="light|dark"> by src/lib/theme.js
+ * (device preference by default, the header toggle overrides it).
+ * Contrast is measured by `npm run check:contrast`, never by eye.
+ */
+
+:root {
+  --font-sans: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Radii */
+  --radius-panel: 18px;
+  --radius-dialog: 24px;
+  --radius-pill: 999px; /* half the height, whatever the height */
+  --radius-tile: 14px; /* tiles, inputs and callouts inside panels */
+  --radius-paper: 4px; /* the page, thumbnails and marks on them: reads as paper */
+
+  /* Content, not chrome: the page and what's on it look the same in both
+     modes (DESIGN.md › What colour means). */
+  --page: #ffffff;
+  --page-veil: rgba(255, 255, 255, 0.85); /* behind text being edited */
+  /* The selected annotation: white halo, then the selection colour. */
+  --selection-ring: 0 0 0 1px var(--page), 0 0 0 3px var(--selection-on-page);
+  --on-paper: #13201b;
+  --on-paper-muted: #4d5e57;
+  --paper-mark: #c3cec8; /* unchosen spots, signing line */
+  --marker-fill: rgba(255, 213, 0, 0.28);
+  --marker-edge: rgba(230, 170, 0, 0.9);
+  --redaction-edge: #c01c28;
+  --redaction-hatch: repeating-linear-gradient(
+    -45deg,
+    rgba(17, 17, 17, 0.6) 0 4px,
+    rgba(17, 17, 17, 0.15) 4px 8px
+  );
+  /* Behind a cut-out signature, so transparency shows. */
+  --checker:
+    linear-gradient(45deg, #e3e5e8 25%, transparent 25%),
+    linear-gradient(-45deg, #e3e5e8 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e3e5e8 75%),
+    linear-gradient(-45deg, transparent 75%, #e3e5e8 75%);
+
+  /* Which source file a page came from (merged documents), on thumbnails. */
+  --source-1: #7fb0f8;
+  --source-2: #e5a50a;
+  --source-3: #2ec27e;
+  --source-4: #f08a3c;
+  --source-5: #d58cdc;
+  --source-6: #f66151;
+  --on-source: #13201b;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --ground: #e4e9e6;
+  --surface: #f4f7f5;
+  --raised: #ffffff;
+  --well: #d6ddd9;
+  --text: #13201b;
+  --text-secondary: #4d5e57;
+  --accent: #1d6b57;
+  --accent-fill: #1d6b57;
+  --accent-fill-hover: #175546;
+  --on-accent: #ffffff;
+  --danger: #a33a2c;
+  --danger-fill-hover: #8a3024;
+  --on-danger: #ffffff;
+  --divider: #c3cec8;
+  --outline: #6a7c75;
+  --selection-on-page: #1d6b57;
+  --scrim: rgba(19, 32, 27, 0.42);
+  --shadow: rgba(19, 40, 32, 0.16);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --ground: #0f1714;
+  --surface: #17221e;
+  --raised: #1d2a25;
+  --well: #0b110f;
+  --text: #e3ebe7;
+  --text-secondary: #93a59d;
+  --accent: #5cc7a6;
+  --accent-fill: #5cc7a6;
+  --accent-fill-hover: #7dd4b9;
+  --on-accent: #062a20;
+  --danger: #f49a8c;
+  --danger-fill-hover: #f7b3a8;
+  --on-danger: #3a0d07;
+  --divider: #2a3934;
+  --outline: #71877c;
+  --selection-on-page: #1d6b57;
+  --scrim: rgba(4, 10, 8, 0.62);
+  --shadow: rgba(2, 10, 7, 0.6);
+}

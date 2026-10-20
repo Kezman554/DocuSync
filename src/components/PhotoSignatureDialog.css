@@ -16,7 +16,7 @@
 .photo-signature__pane figcaption {
   margin-bottom: 0.3rem;
   font-size: 0.75rem;
-  color: #9aa0a6;
+  color: var(--text-secondary);
 }
 
 .photo-signature__canvas {
@@ -24,7 +24,7 @@
   max-width: 100%;
   max-height: 180px;
   margin: 0 auto;
-  border-radius: 4px;
+  border-radius: var(--radius-paper);
 }
 
 /* Checkerboard behind the result so transparency is visible. */
@@ -34,13 +34,9 @@
   justify-content: center;
   min-height: 120px;
   padding: 0.5rem;
-  border-radius: 6px;
-  background-color: #fff;
-  background-image:
-    linear-gradient(45deg, #e3e5e8 25%, transparent 25%),
-    linear-gradient(-45deg, #e3e5e8 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #e3e5e8 75%),
-    linear-gradient(-45deg, transparent 75%, #e3e5e8 75%);
+  border-radius: var(--radius-tile);
+  background-color: var(--page);
+  background-image: var(--checker);
   background-size: 16px 16px;
   background-position: 0 0, 0 8px, 8px -8px, -8px 0;
 }
@@ -48,11 +44,11 @@
 .photo-signature__status {
   margin: 0.5rem 0 0.75rem;
   font-size: 0.8rem;
-  color: #b4b8be;
+  color: var(--text-secondary);
 }
 
 .photo-signature__status--error {
-  color: #f2a0a0;
+  color: var(--danger);
 }
 
 .photo-signature__controls .confirm-dialog__label {
@@ -65,7 +61,7 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.75rem;
-  color: #9aa0a6;
+  color: var(--text-secondary);
 }
 
 .photo-signature__slider input {
@@ -79,7 +75,7 @@
   gap: 0.35rem;
   margin: 0.5rem 0.9rem 0 0;
   font-size: 0.85rem;
-  color: #d4d6da;
+  color: var(--text);
 }
 
 .photo-signature__ink {

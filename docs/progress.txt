@@ -845,3 +845,32 @@ DocuSync — Progress Log
   while typing and deleting, reselected box, watermark field, page-number
   formats, Export PDF go back / carry on / silent when fine, Extract and
   Export images only for affected pages, Compress and Export with password).
+
+2026-10-20 — Restyle groundwork: tokens, Manrope, light/dark, enforcement
+- DESIGN.md committed (look C "Sealed", provisional). CLAUDE.md: read it
+  before UI work; no colour/font/radius literal outside src/styles/tokens.css.
+- src/styles/tokens.css: every role in DESIGN.md's table for both modes under
+  :root[data-theme], radii (panel 18, dialog 24, pill, tile 14, paper 4),
+  plus derived hovers (accent-fill-hover, danger-fill-hover, on-danger) and
+  mode-independent content values (white page, marker, redaction hatch,
+  checkerboard, source-file badge colours).
+- Every CSS colour/font/radius mapped to its role, not the nearest hex.
+  Selected states are solid fills now (no tinted backgrounds under text);
+  on-page chrome uses selection-on-page. Warnings without a warning role
+  use danger (they always carry wording). Default initials ink moved to
+  src/lib/stamps.js (DEFAULT_INK); source badges use var(--source-n).
+- Mode: src/lib/theme.js follows prefers-color-scheme until the header
+  ThemeToggle (self-contained component) picks; remembered in localStorage,
+  every access in try/catch. color-scheme set per token block.
+- Manrope 400–700 bundled via @fontsource/manrope (woff2 in dist/assets).
+  Header labels nowrap, padding 0.65rem / gap 0.4rem so the row still fits
+  1280 (Manrope runs wider than the old system font).
+- Checks: npm run lint:styles (stylelint + declaration-strict-value; side
+  borders added to the listed properties), check:literals
+  (scripts/check-literals.mjs, Babel AST), check:contrast
+  (scripts/check-contrast.mjs, WCAG, both modes; lowest text pair
+  text-secondary on well 4.98:1 light). Each silent on real code; each
+  failed on planted colour / quoted font / px radius in .css, .jsx and .js,
+  and on a lowered token for contrast; plants removed.
+- Tests: 443 passing (+8 tests/theme.test.jsx: stored vs device mode,
+  following the device until picked, blocked storage, toggle).

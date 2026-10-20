@@ -2,7 +2,7 @@
   position: relative;
   flex: 1;
   min-width: 0;
-  background: #1b1c1f;
+  background: var(--well);
   display: flex;
   flex-direction: column;
 }
@@ -29,28 +29,28 @@
   flex: 0 0 auto;
   /* Center small pages but allow large ones to scroll. */
   margin: auto;
-  border-radius: 2px;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.4);
+  border-radius: var(--radius-paper);
+  box-shadow: 0 2px 16px var(--shadow);
 }
 
 .viewer__canvas {
   display: block;
-  background: #fff;
-  border-radius: 2px;
+  background: var(--page);
+  border-radius: var(--radius-paper);
 }
 
 .viewer__status {
-  color: #9aa0a6;
+  color: var(--text-secondary);
   font-size: 0.95rem;
   text-align: center;
 }
 
 .viewer__status--error {
-  color: #f0857d;
+  color: var(--danger);
 }
 
 .viewer__error-detail {
-  color: #9aa0a6;
+  color: var(--text-secondary);
   font-size: 0.8rem;
   margin-top: 0.25rem;
 }

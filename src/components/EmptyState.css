@@ -16,13 +16,13 @@
 .empty-state__title {
   margin: 0;
   font-size: 1.25rem;
-  color: #e6e6e6;
+  color: var(--text);
 }
 
 .empty-state__text {
   margin: 0;
   font-size: 0.9rem;
-  color: #9aa0a6;
+  color: var(--text-secondary);
 }
 
 .empty-state__btn {
@@ -30,25 +30,25 @@
   font: inherit;
   font-size: 0.9rem;
   padding: 0.55rem 1.4rem;
-  border-radius: 8px;
+  border-radius: var(--radius-pill);
   border: none;
-  background: #3a82f6;
-  color: #fff;
+  background: var(--accent-fill);
+  color: var(--on-accent);
   cursor: pointer;
 }
 
 .empty-state__btn:hover {
-  background: #2f6fd6;
+  background: var(--accent-fill-hover);
 }
 
 .empty-state__btn--secondary {
   background: transparent;
-  border: 1px solid #4a4d54;
-  color: #d4d6da;
+  border: 1px solid var(--outline);
+  color: var(--text);
 }
 
 .empty-state__btn--secondary:hover {
-  background: #34363b;
+  background: var(--ground);
 }
 
 .empty-state__file-input {

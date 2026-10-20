@@ -1,30 +1,30 @@
 .protect-offer {
   margin: 0 0 1.1rem;
   padding: 0.5rem 0.7rem;
-  border-left: 3px solid #e5a50a;
-  border-radius: 3px;
-  background: rgba(229, 165, 10, 0.1);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--radius-tile);
+  background: var(--surface);
   font-size: 0.85rem;
   line-height: 1.5;
 }
 
 .protect-offer__btn {
   padding: 0.15rem 0.55rem;
-  border: 1px solid #e5a50a;
-  border-radius: 5px;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-pill);
   background: transparent;
   font: inherit;
   font-size: 0.8rem;
-  color: #f0c95a;
+  color: var(--text);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .protect-offer__btn:hover {
-  background: rgba(229, 165, 10, 0.18);
+  background: var(--ground);
 }
 
 .protect-offer__btn:focus-visible {
-  outline: 2px solid #8ab4ff;
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
