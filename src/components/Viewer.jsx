@@ -2,12 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
 import { effectiveRotation } from '../lib/pageModel.js';
 import EmptyState from './EmptyState.jsx';
-import PageControls from './PageControls.jsx';
+import ToolRow from './ToolRow.jsx';
 import AnnotationLayer from './AnnotationLayer.jsx';
-import TextFormatBar from './TextFormatBar.jsx';
 import './Viewer.css';
 
-function Viewer() {
+function Viewer({ stampsOpen, onToggleStamps }) {
   const {
     hasDocument,
     status,
@@ -84,31 +83,37 @@ function Viewer() {
     };
   }, [pdfDoc, sourcePage, rotation, scale]);
 
+  const toolRow = <ToolRow stampsOpen={stampsOpen} onToggleStamps={onToggleStamps} />;
+
   if (!hasDocument) {
     return (
-      <section className="viewer viewer--empty" aria-label="Document viewer">
-        {status === 'loading' ? (
-          <p className="viewer__status" role="status">
-            {unlocking
-              ? `Unlocking “${unlocking.name}”…`
-              : passwordRequest
-                ? `Waiting for the password for “${passwordRequest.name}”…`
-                : 'Loading PDF…'}
-          </p>
-        ) : status === 'error' ? (
-          <div className="viewer__status viewer__status--error">
-            <p>Couldn’t open that PDF.</p>
-            {error && <p className="viewer__error-detail">{error}</p>}
-          </div>
-        ) : (
-          <EmptyState />
-        )}
+      <section className="viewer" aria-label="Document viewer">
+        {toolRow}
+        <div className="viewer__empty">
+          {status === 'loading' ? (
+            <p className="viewer__status" role="status">
+              {unlocking
+                ? `Unlocking “${unlocking.name}”…`
+                : passwordRequest
+                  ? `Waiting for the password for “${passwordRequest.name}”…`
+                  : 'Loading PDF…'}
+            </p>
+          ) : status === 'error' ? (
+            <div className="viewer__status viewer__status--error">
+              <p>Couldn’t open that PDF.</p>
+              {error && <p className="viewer__error-detail">{error}</p>}
+            </div>
+          ) : (
+            <EmptyState />
+          )}
+        </div>
       </section>
     );
   }
 
   return (
     <section className="viewer" aria-label="Document viewer">
+      {toolRow}
       <div className="viewer__scroll">
         <div className="viewer__page">
           <canvas
@@ -127,8 +132,6 @@ function Viewer() {
           )}
         </div>
       </div>
-      <TextFormatBar />
-      <PageControls />
     </section>
   );
 }

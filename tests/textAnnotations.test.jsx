@@ -134,7 +134,7 @@ describe('text annotations', () => {
     await openPdf(App, user, await letterPdf());
     await addText(user, 100, 150, 'Styled');
 
-    const bar = screen.getByRole('toolbar', { name: 'Text formatting' });
+    const bar = screen.getByRole('group', { name: 'Text formatting' });
     await user.selectOptions(within(bar).getByLabelText('Font'), 'TimesRoman');
     const size = within(bar).getByLabelText('Size');
     await user.clear(size);
@@ -154,7 +154,7 @@ describe('text annotations', () => {
     const user = userEvent.setup();
     await openPdf(App, user, await letterPdf());
     await user.click(screen.getByRole('button', { name: 'Add text' }));
-    const bar = screen.getByRole('toolbar', { name: 'Text formatting' });
+    const bar = screen.getByRole('group', { name: 'Text formatting' });
     await user.selectOptions(within(bar).getByLabelText('Font'), 'Courier');
 
     const el = await layer();

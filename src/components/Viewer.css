@@ -2,12 +2,16 @@
   position: relative;
   flex: 1;
   min-width: 0;
+  container: viewer / inline-size;
   background: var(--well);
   display: flex;
   flex-direction: column;
 }
 
-.viewer--empty {
+.viewer__empty {
+  flex: 1;
+  min-height: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
 }

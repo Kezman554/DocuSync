@@ -1,3 +1,5 @@
+/* Header, one row (DESIGN.md › Layout): thumbnails toggle, name, seal,
+   file name, File ▾, Export PDF ▾. Anything more goes into those menus. */
 .toolbar {
   position: relative;
   display: flex;
@@ -12,23 +14,41 @@
 .toolbar__group {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
+  flex: 0 0 auto;
 }
 
+/* The file name takes what's left and truncates. */
 .toolbar__group--center {
-  flex: 1;
+  flex: 1 1 auto;
   justify-content: center;
   min-width: 0;
 }
 
-.toolbar__group--end {
-  margin-left: auto;
-}
-
 .toolbar__brand {
   font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* Permanent: the privacy promise, in the accent (DESIGN.md › What colour means). */
+.toolbar__seal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.65rem;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.5px;
+  white-space: nowrap;
+  color: var(--accent);
+}
+
+.toolbar__seal-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: 0 0 auto;
 }
 
 .toolbar__filename {
@@ -40,19 +60,56 @@
   max-width: 100%;
 }
 
-.toolbar__btn {
+/* Shared look for the header's buttons and menu triggers. */
+.toolbar__btn,
+.toolbar__menu .menu-button__trigger,
+.toolbar__split-more .menu-button__trigger {
   font: inherit;
   font-size: 0.85rem;
-  padding: 0.4rem 0.65rem;
-  white-space: nowrap; /* Manrope runs wider than the old system font */
+  font-weight: 600;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.9rem;
+  white-space: nowrap;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--accent-fill);
-  background: var(--accent-fill);
-  color: var(--on-accent);
+  border: 1px solid var(--outline);
+  background: transparent;
+  color: var(--text);
   cursor: pointer;
 }
 
-.toolbar__btn:hover:not(:disabled) {
+.toolbar__menu .menu-button__trigger:hover,
+.toolbar__menu .menu-button__trigger[aria-expanded='true'] {
+  background: var(--ground);
+}
+
+/* Export PDF ▾: the primary action, with the other exports in its menu. */
+.toolbar__split {
+  display: inline-flex;
+}
+
+.toolbar__btn.toolbar__split-main,
+.toolbar__split-more .menu-button__trigger {
+  border-color: var(--accent-fill);
+  background: var(--accent-fill);
+  color: var(--on-accent);
+}
+
+.toolbar__split-main {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  padding-right: 0.8rem;
+}
+
+.toolbar__split-more .menu-button__trigger {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left-color: var(--on-accent);
+  padding: 0.4rem 0.7rem 0.4rem 0.6rem;
+}
+
+.toolbar__split-main:hover:not(:disabled),
+.toolbar__split-more .menu-button__trigger:hover,
+.toolbar__split-more .menu-button__trigger[aria-expanded='true'] {
   background: var(--accent-fill-hover);
 }
 
@@ -61,30 +118,19 @@
   cursor: progress;
 }
 
-.toolbar__btn--ghost {
-  background: transparent;
-  border-color: var(--outline);
-  color: var(--text);
-}
-
-.toolbar__btn--on {
-  border-color: var(--accent-fill);
-  background: var(--accent-fill);
-  color: var(--on-accent);
-}
-
-.toolbar__btn--ghost:hover:not(:disabled) {
-  background: var(--ground);
-}
-
-.toolbar__btn--on.toolbar__btn--ghost:hover:not(:disabled) {
-  background: var(--accent-fill-hover);
+.toolbar__btn:focus-visible,
+.toolbar__icon-btn:focus-visible,
+.toolbar .menu-button__trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .toolbar__icon-btn {
   font: inherit;
   font-size: 1.1rem;
   line-height: 1;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
   padding: 0.35rem 0.5rem;
   border-radius: var(--radius-pill);
   border: 1px solid transparent;
@@ -95,11 +141,6 @@
 
 .toolbar__icon-btn:hover {
   background: var(--ground);
-}
-
-/* The sidebar toggle is only relevant on mobile. */
-.toolbar__sidebar-toggle {
-  display: none;
 }
 
 .toolbar__alert {
@@ -124,24 +165,39 @@
   display: none;
 }
 
-@media (max-width: 767px) {
-  .toolbar__sidebar-toggle {
-    display: inline-flex;
+/* Tighter widths: the seal keeps its lock, and the file name gives way. */
+@media (max-width: 899px) {
+  .toolbar__seal-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 
-  /* Hide the centred filename on narrow screens to save space. */
+  .toolbar__seal {
+    padding: 0.3rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .toolbar {
+    gap: 0.4rem;
+    padding: 0.5rem;
+  }
+
   .toolbar__group--center {
     display: none;
   }
 
-  /* Four actions don't fit on a phone in one row — let them wrap. */
   .toolbar__group--end {
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    margin-left: auto;
     gap: 0.35rem;
   }
 
-  .toolbar__btn {
-    padding: 0.35rem 0.6rem;
+  .toolbar__btn,
+  .toolbar__menu .menu-button__trigger {
+    padding: 0.35rem 0.7rem;
   }
 }

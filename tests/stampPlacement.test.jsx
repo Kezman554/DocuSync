@@ -271,6 +271,6 @@ describe('placing stamps', () => {
     expect(screen.queryByRole('textbox', { name: 'Text' })).toBeNull();
     // Selected, but no font controls (they'd break the symbol).
     expect(cross).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.queryByRole('toolbar', { name: 'Text formatting' })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Text formatting' })).toBeNull();
   });
 });

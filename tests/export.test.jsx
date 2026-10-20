@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PDFDocument } from 'pdf-lib';
 import { openPdf, setupDom, thumb } from './helpers/fakePdf.jsx';
+import { chooseFromMenu, EXPORT_MENU } from './helpers/menus.js';
 
 vi.mock('../src/lib/pdfLoader.js', async () => {
   const { pdfFor } = await import('./helpers/fakePdf.jsx');
@@ -106,7 +107,7 @@ describe('extract pages (split)', () => {
   afterEach(() => vi.restoreAllMocks());
 
   const openExtract = async (user) => {
-    await user.click(screen.getByRole('button', { name: 'Extract pages…' }));
+    await chooseFromMenu(user, EXPORT_MENU, 'Extract pages…');
     const dialog = screen.getByRole('dialog', { name: 'Extract pages' });
     return { dialog, input: within(dialog).getByLabelText(/^Pages/) };
   };

@@ -17,6 +17,7 @@ import {
   sidebarOrder,
   thumb,
 } from './helpers/fakePdf.jsx';
+import { chooseFromMenu, FILE_MENU } from './helpers/menus.js';
 
 vi.mock('../src/lib/pdfLoader.js', async () => {
   const { pdfFor } = await import('./helpers/fakePdf.jsx');
@@ -182,7 +183,7 @@ describe('merge', () => {
     await addPdf(user, await realPdf('extra.pdf', B));
     await screen.findByText('Page 5 of 6');
 
-    await user.click(screen.getByRole('button', { name: 'Close' }));
+    await chooseFromMenu(user, FILE_MENU, 'Close');
     expect(fakePdf.destroy).toHaveBeenCalled();
     expect(extraPdfs['extra.pdf'].destroy).toHaveBeenCalled();
   });

@@ -1,0 +1,56 @@
+.menu-button {
+  position: relative;
+  display: inline-flex;
+}
+
+.menu-button__menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  z-index: 30;
+  min-width: 13rem;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-tile);
+  background: var(--raised);
+  box-shadow: 0 8px 24px var(--shadow);
+}
+
+.menu-button__menu--start {
+  left: 0;
+}
+
+.menu-button__menu--end {
+  right: 0;
+}
+
+.menu-button__item {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  white-space: nowrap;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.menu-button__item:hover:not(:disabled),
+.menu-button__item:focus-visible {
+  background: var(--surface);
+}
+
+.menu-button__item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.menu-button__item:disabled {
+  color: var(--text-secondary);
+  cursor: default;
+}

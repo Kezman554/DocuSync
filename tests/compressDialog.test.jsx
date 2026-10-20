@@ -13,6 +13,7 @@ import {
 } from 'pdf-lib';
 import { openPdf, setupDom } from './helpers/fakePdf.jsx';
 import { rng } from './helpers/syntheticPhoto.js';
+import { chooseFromMenu, EXPORT_MENU } from './helpers/menus.js';
 
 const PHOTO = new Uint8Array(readFileSync(resolve(__dirname, 'fixtures', 'photo-400x300.jpg')));
 
@@ -54,7 +55,7 @@ async function scannedPdf() {
 }
 
 async function openCompress(user) {
-  await user.click(screen.getByRole('button', { name: 'Compress…' }));
+  await chooseFromMenu(user, EXPORT_MENU, 'Compress…');
   return screen.getByRole('dialog', { name: 'Compress PDF' });
 }
 

@@ -7,10 +7,11 @@ import ConfirmDialog from './ConfirmDialog.jsx';
 import ProtectDialog from './ProtectDialog.jsx';
 import ProtectOffer, { UNPROTECTED_SENTENCE } from './ProtectOffer.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
+import MenuButton from './MenuButton.jsx';
 import { redactionWarning } from '../lib/redaction.js';
 import './Toolbar.css';
 
-function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
+function Toolbar({ onToggleSidebar }) {
   const {
     hasDocument,
     document,
@@ -72,13 +73,65 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
 
   const extraSources = sources.length - 1;
 
+  const fileItems = hasDocument
+    ? [
+        { label: 'Open another', onSelect: () => inputRef.current?.click() },
+        {
+          label: adding ? 'Adding…' : 'Add PDF…',
+          onSelect: () => addInputRef.current?.click(),
+          disabled: adding,
+          title: 'Merge: append pages from other PDFs',
+        },
+        {
+          label: 'From images…',
+          onSelect: () => imagesInputRef.current?.click(),
+          title: 'Create a PDF from photos or images',
+        },
+        { label: 'Close', onSelect: closeDocument },
+      ]
+    : [
+        { label: 'Open PDF…', onSelect: () => inputRef.current?.click() },
+        {
+          label: 'From images…',
+          onSelect: () => imagesInputRef.current?.click(),
+          title: 'Create a PDF from photos or images',
+        },
+      ];
+
+  const exportItems = [
+    {
+      label: 'Export with password…',
+      onSelect: () => setProtectOpen(true),
+      disabled: exporting,
+      title: 'Download the edited PDF encrypted with a password',
+    },
+    {
+      label: 'Extract pages…',
+      onSelect: () => setExtractOpen(true),
+      disabled: exporting,
+      title: 'Save selected pages or ranges as a new PDF',
+    },
+    {
+      label: 'Export images…',
+      onSelect: () => setImagesOpen(true),
+      disabled: exporting,
+      title: 'Save pages as PNG or JPG images',
+    },
+    {
+      label: 'Compress…',
+      onSelect: () => setCompressOpen(true),
+      disabled: exporting,
+      title: 'Download a smaller copy: re-encode images, strip metadata',
+    },
+  ];
+
   return (
     <header className="toolbar">
-      <div className="toolbar__group">
+      <div className="toolbar__group toolbar__group--start">
         {hasDocument && (
           <button
             type="button"
-            className="toolbar__icon-btn toolbar__sidebar-toggle"
+            className="toolbar__icon-btn"
             onClick={onToggleSidebar}
             aria-label="Toggle thumbnails"
             title="Toggle thumbnails"
@@ -87,6 +140,13 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
           </button>
         )}
         <span className="toolbar__brand">DocuSync</span>
+        <span className="toolbar__seal" title="Your files are opened and edited in this browser. Nothing is uploaded.">
+          <svg className="toolbar__seal-icon" viewBox="0 0 16 16" aria-hidden="true">
+            <rect x="3" y="7" width="10" height="7" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          </svg>
+          <span className="toolbar__seal-text">On this device · nothing uploaded</span>
+        </span>
       </div>
 
       <div className="toolbar__group toolbar__group--center">
@@ -102,113 +162,44 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
       </div>
 
       <div className="toolbar__group toolbar__group--end">
-        <button
-          type="button"
-          className={`toolbar__btn toolbar__btn--ghost${stampsOpen ? ' toolbar__btn--on' : ''}`}
-          onClick={onToggleStamps}
-          aria-expanded={stampsOpen}
-          aria-controls="stamps-panel"
-          title="Stamps library: ticks, initials and signatures"
-        >
-          Stamps
-        </button>
+        <MenuButton
+          className="toolbar__menu"
+          label={
+            <>
+              File <span aria-hidden="true">▾</span>
+            </>
+          }
+          ariaLabel="File"
+          items={fileItems}
+          align="end"
+        />
         {hasDocument && (
-          <button
-            type="button"
-            className="toolbar__btn"
-            // Say so before exporting if redacted pages become images, or
-            // if the original had a password this export won't have.
-            onClick={handleExport}
-            disabled={exporting}
-            aria-busy={exporting}
-            title="Download a new PDF with your page edits applied"
-          >
-            {exporting
-              ? progress
-                ? `Rendering ${progress.done}/${progress.total}…`
-                : 'Exporting…'
-              : 'Export PDF'}
-          </button>
-        )}
-        {hasDocument && (
-          <button
-            type="button"
-            className="toolbar__btn toolbar__btn--ghost"
-            onClick={() => setProtectOpen(true)}
-            disabled={exporting}
-            title="Download the edited PDF encrypted with a password"
-          >
-            Export with password…
-          </button>
-        )}
-        {hasDocument && (
-          <button
-            type="button"
-            className="toolbar__btn toolbar__btn--ghost"
-            onClick={() => setExtractOpen(true)}
-            disabled={exporting}
-            title="Save selected pages or ranges as a new PDF"
-          >
-            Extract pages…
-          </button>
-        )}
-        {hasDocument && (
-          <button
-            type="button"
-            className="toolbar__btn toolbar__btn--ghost"
-            onClick={() => setImagesOpen(true)}
-            disabled={exporting}
-            title="Save pages as PNG or JPG images"
-          >
-            Export images…
-          </button>
-        )}
-        {hasDocument && (
-          <button
-            type="button"
-            className="toolbar__btn toolbar__btn--ghost"
-            onClick={() => setCompressOpen(true)}
-            disabled={exporting}
-            title="Download a smaller copy: re-encode images, strip metadata"
-          >
-            Compress…
-          </button>
-        )}
-        {hasDocument && (
-          <button
-            type="button"
-            className="toolbar__btn toolbar__btn--ghost"
-            onClick={() => addInputRef.current?.click()}
-            disabled={adding}
-            aria-busy={adding}
-            title="Merge: append pages from other PDFs"
-          >
-            {adding ? 'Adding…' : 'Add PDF…'}
-          </button>
-        )}
-        <button
-          type="button"
-          className="toolbar__btn toolbar__btn--ghost"
-          onClick={() => imagesInputRef.current?.click()}
-          title="Create a PDF from photos or images"
-        >
-          From images…
-        </button>
-        <button
-          type="button"
-          className={`toolbar__btn${hasDocument ? ' toolbar__btn--ghost' : ''}`}
-          onClick={() => inputRef.current?.click()}
-        >
-          {hasDocument ? 'Open another' : 'Open PDF'}
-        </button>
-        {hasDocument && (
-          <button
-            type="button"
-            className="toolbar__btn toolbar__btn--ghost"
-            onClick={closeDocument}
-          >
-            Close
-          </button>
+          <div className="toolbar__split">
+            <button
+              type="button"
+              className="toolbar__btn toolbar__split-main"
+              // Say so before exporting if redacted pages become images, or
+              // if the original had a password this export won't have.
+              onClick={handleExport}
+              disabled={exporting}
+              aria-busy={exporting}
+              title="Download a new PDF with your page edits applied"
+            >
+              {exporting
+                ? progress
+                  ? `Rendering ${progress.done}/${progress.total}…`
+                  : 'Exporting…'
+                : 'Export PDF'}
+            </button>
+            <MenuButton
+              className="toolbar__split-more"
+              label={<span aria-hidden="true">▾</span>}
+              ariaLabel="More export options"
+              title="More export options"
+              items={exportItems}
+              align="end"
+            />
+          </div>
         )}
         <ThemeToggle />
         <input

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { openPdf, setupDom, thumb } from './helpers/fakePdf.jsx';
+import { chooseFromMenu, EXPORT_MENU } from './helpers/menus.js';
 
 vi.mock('../src/lib/pdfLoader.js', async () => {
   const { pdfFor } = await import('./helpers/fakePdf.jsx');
@@ -132,7 +133,7 @@ describe('page numbering', () => {
     await openPdf(App, user, await letterPdf());
     await applyNumbers(user, { format: 'page-n-of-total' });
 
-    await user.click(screen.getByRole('button', { name: 'Extract pages…' }));
+    await chooseFromMenu(user, EXPORT_MENU, 'Extract pages…');
     const dialog = screen.getByRole('dialog', { name: 'Extract pages' });
     const input = within(dialog).getByLabelText(/^Pages/);
     await user.clear(input);

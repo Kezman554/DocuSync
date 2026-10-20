@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PDFDocument } from 'pdf-lib';
 import { openPdf, setupDom, thumb } from './helpers/fakePdf.jsx';
+import { chooseFromMenu, EXPORT_MENU } from './helpers/menus.js';
 
 vi.mock('../src/lib/pdfLoader.js', async () => {
   const { pdfFor } = await import('./helpers/fakePdf.jsx');
@@ -177,7 +178,7 @@ describe('redaction tool', () => {
     await drag([100, 200], [300, 240]);
     await user.keyboard('{Escape}');
 
-    await user.click(screen.getByRole('button', { name: 'Extract pages…' }));
+    await chooseFromMenu(user, EXPORT_MENU, 'Extract pages…');
     const dialog = screen.getByRole('dialog', { name: 'Extract pages' });
     const input = within(dialog).getByLabelText(/^Pages/);
     await user.clear(input);
@@ -195,7 +196,7 @@ describe('redaction tool', () => {
     await drag([100, 200], [300, 240]);
     await user.keyboard('{Escape}');
 
-    await user.click(screen.getByRole('button', { name: 'Compress…' }));
+    await chooseFromMenu(user, EXPORT_MENU, 'Compress…');
     const dialog = screen.getByRole('dialog', { name: 'Compress PDF' });
     expect(within(dialog).getByRole('note')).toHaveTextContent(/become|becomes an image/);
   });

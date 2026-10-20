@@ -6,6 +6,7 @@ import { openPdf, setupDom } from './helpers/fakePdf.jsx';
 import { NUMBER_FORMATS, pageNumberLabels } from '../src/lib/pageNumbering.js';
 import { STANDARD_FONTS } from '../src/lib/textLayout.js';
 import { missingCharsWarning, unexportableChars } from '../src/lib/exportableText.js';
+import { chooseFromMenu, EXPORT_MENU } from './helpers/menus.js';
 
 vi.mock('../src/lib/pdfLoader.js', async () => {
   const { pdfFor } = await import('./helpers/fakePdf.jsx');
@@ -42,7 +43,7 @@ async function startText(user) {
   return screen.getByRole('textbox', { name: 'Text' });
 }
 
-const formatBar = () => screen.getByRole('toolbar', { name: 'Text formatting' });
+const formatBar = () => screen.getByRole('group', { name: 'Text formatting' });
 const barWarning = () => within(formatBar()).getByRole('status');
 
 describe('warning while typing text', () => {
@@ -172,7 +173,7 @@ describe('before an export', () => {
       ['Extract pages…', 'Extract pages', 'the exported PDF'],
       ['Export images…', 'Export pages as images', 'the exported images'],
     ]) {
-      await user.click(screen.getByRole('button', { name: button }));
+      await chooseFromMenu(user, EXPORT_MENU, button);
       const dialog = screen.getByRole('dialog', { name: title });
       const input = within(dialog).getByLabelText(/^Pages/);
       await user.clear(input);
@@ -194,7 +195,7 @@ describe('before an export', () => {
       ['Compress…', 'Compress PDF'],
       ['Export with password…', 'Export with password'],
     ]) {
-      await user.click(screen.getByRole('button', { name: button }));
+      await chooseFromMenu(user, EXPORT_MENU, button);
       const dialog = screen.getByRole('dialog', { name: title });
       expect(dialog).toHaveTextContent('On page 2, ł won’t appear in the exported PDF');
       await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));

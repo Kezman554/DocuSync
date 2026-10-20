@@ -1,0 +1,134 @@
+/* The inspector: 290 px on the right (DESIGN.md › Layout). */
+.inspector {
+  flex: 0 0 290px;
+  width: 290px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border-left: 1px solid var(--divider);
+  background: var(--ground);
+}
+
+/* The stamps panel heads the column while Stamps is open; the column
+   scrolls as one. */
+.inspector > .stamps-panel {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: auto;
+  border-left: none;
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+}
+
+.inspector > .stamps-panel .stamps-panel__body {
+  overflow: visible;
+}
+
+.inspector__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.85rem;
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+
+.inspector__heading {
+  margin: 0 0 0.15rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.inspector__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.inspector__row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.inspector__row .inspector__btn {
+  flex: 1 1 0;
+}
+
+.inspector__btn,
+.inspector__setting {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.75rem;
+  white-space: nowrap;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--outline);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.inspector__btn:hover:not(:disabled),
+.inspector__setting:hover {
+  background: var(--ground);
+}
+
+.inspector__btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.inspector__btn:focus-visible,
+.inspector__setting:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Destructive: danger, always with wording. */
+.inspector__btn--danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* A document setting with its On/Off state. */
+.inspector__setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.inspector__state {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-pill);
+  color: var(--text-secondary);
+}
+
+/* On: accent (DESIGN.md › What colour means). */
+.inspector__state--on {
+  background: var(--accent-fill);
+  color: var(--on-accent);
+}
+
+/* Below 640 px (phone layout is separate work): the inspector follows the
+   page as a scrollable block instead of a side column. */
+@media (max-width: 639px) {
+  .inspector {
+    flex: 0 0 auto;
+    width: 100%;
+    max-height: 40vh;
+    border-left: none;
+    border-top: 1px solid var(--divider);
+  }
+}

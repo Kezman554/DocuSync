@@ -907,3 +907,39 @@ DocuSync — Progress Log
   (viewer error, 4.75:1 light) and danger as a 3:1 edge on all four grounds.
   Not covered: the Redacted badge and annotation × fills against the white
   page measure 2.13:1 in dark (their text, on-danger, is 7.94:1).
+
+2026-10-20 — danger-on-page, then the L4 layout (640 px and up)
+- danger-on-page (#C01C28, white text, both modes) for the Redacted badge
+  and the annotation ×; hover #9B1620. In DESIGN.md's table and
+  check:contrast (6.11:1 on white, text 6.11:1, hover 8.30:1).
+- Header, one row: thumbnails toggle, name, seal (lock + "On this device ·
+  nothing uploaded", text hidden under 900 px), file name (truncates),
+  File ▾ (Open another, Add PDF…, From images…, Close; Open PDF… and From
+  images… with no document), Export PDF split with ▾ (Export with
+  password…, Extract pages…, Export images…, Compress…). MenuButton:
+  WAI-ARIA menu button; Enter/Space/↓ open on the first item, ↑ on the
+  last; ↑/↓ wrap, Home/End; Esc closes (without cancelling a tool) and
+  returns focus; Tab or a click outside closes. Pre-export checks
+  untouched (handleExport and its confirm unchanged).
+- ToolRow above the page: Marker, Text, Image, Redact, Stamps; page nav and
+  zoom at the right end. Icons only when the centre column is under 760 px
+  (container query; aria-labels kept). Always shown so Stamps works with no
+  document (the library tests rely on that); the page tools are disabled
+  then. PageControls removed.
+- Inspector (290 px, right): selected annotation (Text box / New text with
+  the format controls and missing-character warning; others named), then
+  the selected pages or current page (rotate, Extract… pre-filled with the
+  selection, Delete N pages with its confirm), then Document (Page numbers
+  and Watermark with On/Off, moved from the sidebar; Password… opens the
+  password export). The floating format bar is gone.
+- Stamps: the panel is unchanged and heads the inspector column while open,
+  so rotate/delete stay reachable (stampPlacement rotates with it open).
+- Thumbnails toggle: drawer under 768 px (as before), hides the column above.
+- Under 640 px (phone layout is its own card): the inspector stacks under
+  the page, max 40vh.
+- Tests: 476 passing (+14 tests/layout.test.jsx: File/Export menus by
+  keyboard, Esc, Tab, outside click, no-document File menu, tool row, the
+  inspector's sections as selection changes, Extract pre-fill, Document
+  settings, stamps open). Moved-control tests use tests/helpers/menus.js.
+- Screenshots 1280×800 and 1024×768, light and dark: header and tool row
+  don't overflow at either size.

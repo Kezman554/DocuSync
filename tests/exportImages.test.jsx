@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PDFDocument } from 'pdf-lib';
 import { openPdf, setupDom, thumb } from './helpers/fakePdf.jsx';
 import { readZip } from './helpers/zip.js';
+import { chooseFromMenu, EXPORT_MENU } from './helpers/menus.js';
 
 vi.mock('../src/lib/pdfLoader.js', async () => {
   const { pdfFor } = await import('./helpers/fakePdf.jsx');
@@ -57,7 +58,7 @@ async function sizedPdf() {
 const decode = (bytes) => JSON.parse(new TextDecoder().decode(bytes));
 
 async function openDialog(user) {
-  await user.click(screen.getByRole('button', { name: 'Export images…' }));
+  await chooseFromMenu(user, EXPORT_MENU, 'Export images…');
   const dialog = screen.getByRole('dialog', { name: 'Export pages as images' });
   return { dialog, pagesInput: within(dialog).getByLabelText(/^Pages/) };
 }

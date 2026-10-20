@@ -29,3 +29,11 @@
     cursor: pointer;
   }
 }
+
+/* Below 640 px the inspector sits under the page (the phone bottom sheet is
+   separate work). */
+@media (max-width: 639px) {
+  .app__body {
+    flex-direction: column;
+  }
+}

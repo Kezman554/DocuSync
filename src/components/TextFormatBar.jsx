@@ -6,10 +6,19 @@ import './TextFormatBar.css';
 
 const SIZE_PRESETS = [8, 10, 12, 14, 16, 18, 24, 32, 48, 72];
 
+/** The selected free-text box, if any. Stamps (ticks, initials) keep their look. */
+export function textFormatTarget(pages, selectedAnnotationId) {
+  const selected = selectedAnnotationId ? findAnnotation(pages, selectedAnnotationId) : null;
+  return selected?.annotation.type === 'text' && !selected.annotation.stamp
+    ? selected.annotation
+    : null;
+}
+
 /**
- * Font, size and colour for text annotations. Shown while the Text tool is
- * active (styles the next box) or a text box is selected (restyles it).
- * Uses the PDF standard fonts so the export needs no embedded font files.
+ * Font, size and colour for text annotations, in the inspector. Shown while
+ * the Text tool is active (styles the next box) or a text box is selected
+ * (restyles it). Uses the PDF standard fonts so the export needs no
+ * embedded font files.
  */
 function TextFormatBar() {
   const {
@@ -26,10 +35,7 @@ function TextFormatBar() {
   // "24") isn't fought by the controlled value. Valid sizes apply instantly.
   const [sizeDraft, setSizeDraft] = useState(null);
 
-  const selected = selectedAnnotationId ? findAnnotation(pages, selectedAnnotationId) : null;
-  // Stamps (ticks, initials) keep their look; only free text is restyled here.
-  const target =
-    selected?.annotation.type === 'text' && !selected.annotation.stamp ? selected.annotation : null;
+  const target = textFormatTarget(pages, selectedAnnotationId);
   if (tool !== 'text' && !target) return null;
 
   const style = target
@@ -45,7 +51,7 @@ function TextFormatBar() {
   };
 
   return (
-    <div className="text-format" role="toolbar" aria-label="Text formatting">
+    <div className="text-format" role="group" aria-label="Text formatting">
       <label className="text-format__label" htmlFor={ids.font}>
         Font
       </label>

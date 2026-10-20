@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { extraPdfs, makeFakePdf, openPdf, setupDom, thumb } from './helpers/fakePdf.jsx';
 import { looksEncrypted } from '../src/lib/protect.js';
+import { chooseFromMenu, EXPORT_MENU } from './helpers/menus.js';
 
 vi.mock('../src/lib/pdfLoader.js', async () => {
   const { pdfFor } = await import('./helpers/fakePdf.jsx');
@@ -246,7 +247,7 @@ describe('exporting a once-protected file without a password', () => {
     const user = userEvent.setup();
     await openLocked(user);
 
-    await user.click(screen.getByRole('button', { name: 'Extract pages…' }));
+    await chooseFromMenu(user, EXPORT_MENU, 'Extract pages…');
     const extract = screen.getByRole('dialog', { name: 'Extract pages' });
     expect(within(extract).getByRole('note')).toHaveTextContent(SENTENCE);
     // Its own checkbox replaces the Export with password… button (which
@@ -256,7 +257,7 @@ describe('exporting a once-protected file without a password', () => {
     expect(extract).not.toHaveTextContent(SENTENCE);
     await user.click(within(extract).getByRole('button', { name: 'Cancel' }));
 
-    await user.click(screen.getByRole('button', { name: 'Compress…' }));
+    await chooseFromMenu(user, EXPORT_MENU, 'Compress…');
     const compress = screen.getByRole('dialog', { name: 'Compress PDF' });
     expect(compress).toHaveTextContent(SENTENCE);
     // Choosing to password-protect the compressed copy removes the warning.
@@ -267,7 +268,7 @@ describe('exporting a once-protected file without a password', () => {
   it('Extract pages encrypts just the chosen pages', async () => {
     const user = userEvent.setup();
     await openLocked(user); // three pages: "Locked page one/two/three"
-    await user.click(screen.getByRole('button', { name: 'Extract pages…' }));
+    await chooseFromMenu(user, EXPORT_MENU, 'Extract pages…');
     const dialog = screen.getByRole('dialog', { name: 'Extract pages' });
     const pagesInput = within(dialog).getByLabelText(/^Pages/);
     await user.clear(pagesInput);
@@ -306,10 +307,10 @@ describe('exporting a once-protected file without a password', () => {
   it('says nothing for a file that never had a password', async () => {
     const user = userEvent.setup();
     await openPdf(App, user, await plainPdfFile());
-    await user.click(screen.getByRole('button', { name: 'Extract pages…' }));
+    await chooseFromMenu(user, EXPORT_MENU, 'Extract pages…');
     expect(screen.getByRole('dialog', { name: 'Extract pages' })).not.toHaveTextContent(SENTENCE);
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
-    await user.click(screen.getByRole('button', { name: 'Compress…' }));
+    await chooseFromMenu(user, EXPORT_MENU, 'Compress…');
     expect(screen.getByRole('dialog', { name: 'Compress PDF' })).not.toHaveTextContent(SENTENCE);
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
@@ -328,7 +329,7 @@ describe('export with password', () => {
 
   async function openProtect(user) {
     await openPdf(App, user, await plainPdfFile());
-    await user.click(screen.getByRole('button', { name: 'Export with password…' }));
+    await chooseFromMenu(user, EXPORT_MENU, 'Export with password…');
     return screen.getByRole('dialog', { name: 'Export with password' });
   }
 
@@ -392,7 +393,7 @@ describe('export with password', () => {
   it('can protect the compressed result, encrypting after compression', async () => {
     const user = userEvent.setup();
     await openPdf(App, user, await plainPdfFile());
-    await user.click(screen.getByRole('button', { name: 'Compress…' }));
+    await chooseFromMenu(user, EXPORT_MENU, 'Compress…');
     const dialog = screen.getByRole('dialog', { name: 'Compress PDF' });
     expect(within(dialog).queryByLabelText('Password to open the file')).toBeNull();
 
