@@ -42,20 +42,18 @@
   background: var(--ground);
 }
 
-.sidebar__thumb--active {
-  border-color: var(--accent);
-  background: var(--raised);
-  color: var(--text);
-}
-
-/* Part of a multi-page selection (Ctrl/Shift-click); rotate acts on these. */
-.sidebar__thumb--selected {
+/* The current page: only its number pill is filled. */
+.sidebar__thumb--active .sidebar__thumb-label {
   background: var(--accent-fill);
   color: var(--on-accent);
+  font-weight: 600;
 }
 
-.sidebar__thumb--selected:hover {
-  background: var(--accent-fill-hover);
+/* Part of a multi-page selection (Ctrl/Shift-click); rotate acts on these.
+   An outline around the thumbnail, never a fill behind it. */
+.sidebar__thumb--selected .sidebar__thumb-preview {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
 /* Pages being dragged fade so the drop indicator reads clearly. */
@@ -155,8 +153,9 @@
   line-height: 1.2rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--on-danger);
-  background: var(--danger);
+  border: 1px solid var(--outline);
+  color: var(--text);
+  background: var(--raised);
   box-shadow: 0 1px 3px var(--shadow);
 }
 
@@ -173,6 +172,8 @@
 }
 
 .sidebar__thumb-label {
+  padding: 0 0.55rem;
+  border-radius: var(--radius-pill);
   font-size: 0.8rem;
 }
 

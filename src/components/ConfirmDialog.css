@@ -110,23 +110,24 @@
   outline-offset: 1px;
 }
 
-.confirm-dialog__input[aria-invalid='true'] {
-  border-color: var(--danger);
-}
-
 .confirm-dialog__hint {
   font-size: 0.8rem;
   color: var(--text-secondary);
   min-height: 1.2em;
 }
 
+/* Errors and cautions: the wording carries them, not colour (danger is only
+   for destructive actions). */
 .confirm-dialog__hint--error {
-  color: var(--danger);
+  color: var(--text);
 }
 
 /* Heads-up that doesn't block (e.g. characters that won't export). */
 .confirm-dialog__hint--warn {
-  color: var(--danger);
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-tile);
+  color: var(--text);
 }
 
 .confirm-dialog__hint--warn:empty {
@@ -144,9 +145,9 @@
 .confirm-dialog__warning {
   margin: 0.6rem 0 0;
   padding: 0.5rem 0.7rem;
-  border-left: 3px solid var(--danger);
+  border: 1px solid var(--outline);
   border-radius: var(--radius-tile);
-  background: var(--surface);
+  color: var(--text);
   font-size: 0.85rem;
   line-height: 1.4;
 }

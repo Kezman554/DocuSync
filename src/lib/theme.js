@@ -7,6 +7,9 @@
  * Storage can be blocked (private windows, site-data settings), so every
  * read and write is guarded: the app then follows the device and the
  * toggle still works for the session.
+ *
+ * index.html sets the starting mode before first paint with an inline copy
+ * of initialTheme(); tests/theme.test.jsx checks the two agree.
  */
 
 export const THEMES = ['light', 'dark'];
@@ -53,13 +56,18 @@ export function applyTheme(theme, doc = globalThis.document) {
   doc.documentElement.dataset.theme = theme;
 }
 
+/** The starting mode: the remembered choice, else the device preference. */
+export function initialTheme(win = globalThis.window, storage = safeLocalStorage(win)) {
+  return readStoredTheme(storage) ?? systemTheme(win);
+}
+
 /**
  * Set the starting mode, and follow the device while the user hasn't
  * picked one. Returns a cleanup function.
  */
 export function initTheme({ win = globalThis.window, doc = globalThis.document, storage } = {}) {
   const store = storage ?? safeLocalStorage(win);
-  applyTheme(readStoredTheme(store) ?? systemTheme(win), doc);
+  applyTheme(initialTheme(win, store), doc);
 
   const query = darkQuery(win);
   if (!query?.addEventListener) return () => {};

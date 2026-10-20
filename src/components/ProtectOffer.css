@@ -1,16 +1,16 @@
 .protect-offer {
   margin: 0 0 1.1rem;
   padding: 0.5rem 0.7rem;
-  border-left: 3px solid var(--danger);
+  border: 1px solid var(--accent);
   border-radius: var(--radius-tile);
-  background: var(--surface);
+  color: var(--text);
   font-size: 0.85rem;
   line-height: 1.5;
 }
 
 .protect-offer__btn {
   padding: 0.15rem 0.55rem;
-  border: 1px solid var(--outline);
+  border: 1px solid var(--accent);
   border-radius: var(--radius-pill);
   background: transparent;
   font: inherit;

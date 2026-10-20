@@ -874,3 +874,24 @@ DocuSync — Progress Log
   and on a lowered token for contrast; plants removed.
 - Tests: 443 passing (+8 tests/theme.test.jsx: stored vs device mode,
   following the device until picked, blocked storage, toggle).
+
+2026-10-20 — Restyle follow-ups: cautions, thumbnails, pre-paint mode, spec
+- Danger only for destructive actions (Delete buttons, the annotation ×).
+  Cautions and errors (missing-character notes, export warnings, stamp and
+  photo errors, the header notice, the Redacted badge) are text colour in an
+  outline-edged note or plain wording; invalid fields keep aria-invalid and
+  their message but no red edge. The won't-be-password-protected offer is
+  outlined in accent with an accent-edged Export with password… button.
+  Rule added to DESIGN.md › What colour means.
+- Thumbnails: selected = 2px accent outline, 3px offset, round the preview;
+  current page = accent number pill. No fill behind the thumbnail.
+- index.html inline script sets data-theme before first paint (stored
+  choice in try/catch, else prefers-color-scheme), mirroring
+  initialTheme() in src/lib/theme.js; tests run the real inline script
+  against 18 stored/device cases and compare (a changed key fails 3).
+- DESIGN.md token table now lists the hover fills, on-danger and the
+  mode-independent roles; values checked against tokens.css (0 mismatches).
+- Production build in headless Edge, network logged on the page and every
+  worker (CDP auto-attach): open PDF, select, export → 13 requests, all to
+  localhost; none outside. Mode was set at DOM-interactive.
+- Tests: 462 passing (+19 pre-paint agreement). All three checks clean.

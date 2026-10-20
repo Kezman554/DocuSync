@@ -46,7 +46,7 @@
 }
 
 .viewer__status--error {
-  color: var(--danger);
+  color: var(--text);
 }
 
 .viewer__error-detail {

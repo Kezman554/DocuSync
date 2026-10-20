@@ -1,8 +1,10 @@
+import { readFileSync } from 'node:fs';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   STORAGE_KEY,
   initTheme,
+  initialTheme,
   readStoredTheme,
   storeTheme,
 } from '../src/lib/theme.js';
@@ -126,4 +128,48 @@ describe('ThemeToggle', () => {
     expect(document.documentElement.dataset.theme).toBe('dark');
     spy.mockRestore();
   });
+});
+
+describe('index.html pre-paint script', () => {
+  const html = readFileSync('index.html', 'utf8') // vitest runs from the repo root;
+  const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+
+  /** Run the inline script with `win` as its global scope; return the mode it set. */
+  function runInline(win) {
+    const doc = { documentElement: { dataset: {} } };
+    const scope = new Proxy(win, {
+      has: () => true,
+      get: (target, key) => (key === 'document' ? doc : key in target ? target[key] : undefined),
+    });
+    // eslint-disable-next-line no-new-func -- sloppy mode so `with` stands in for window
+    new Function('scope', `with (scope) { ${inline[0]} }`)(scope);
+    return doc.documentElement.dataset.theme;
+  }
+
+  function win({ stored, dark }) {
+    const w = {};
+    if (dark !== 'none') w.matchMedia = () => ({ matches: dark });
+    Object.defineProperty(w, 'localStorage', {
+      get() {
+        if (stored === 'access-throws') throw new DOMException('blocked', 'SecurityError');
+        if (stored === 'get-throws') return blockedStorage;
+        return memoryStorage(stored == null ? {} : { [STORAGE_KEY]: stored });
+      },
+    });
+    return w;
+  }
+
+  it('is the only classic inline script', () => {
+    expect(inline).toHaveLength(1);
+  });
+
+  const storedCases = ['light', 'dark', 'sepia', null, 'get-throws', 'access-throws'];
+  const deviceCases = [true, false, 'none'];
+  for (const stored of storedCases) {
+    for (const dark of deviceCases) {
+      it(`agrees with initialTheme(): stored ${stored}, device dark ${dark}`, () => {
+        expect(runInline(win({ stored, dark }))).toBe(initialTheme(win({ stored, dark })));
+      });
+    }
+  }
 });

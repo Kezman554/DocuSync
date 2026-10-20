@@ -38,6 +38,26 @@ Typeface: Manrope, weights 400/500/600/700, bundled with `@fontsource` (never fe
 | selection-on-page | `#1D6B57` | `#1D6B57` |
 | scrim | `rgba(19,32,27,0.42)` | `rgba(4,10,8,0.62)` |
 | shadow | `rgba(19,40,32,0.16)` | `rgba(2,10,7,0.60)` |
+| accent-fill-hover | `#175546` | `#7DD4B9` |
+| danger-fill-hover | `#8A3024` | `#F7B3A8` |
+| on-danger (text on a danger fill) | `#FFFFFF` | `#3A0D07` |
+
+These stay the same in both modes. They are content, or chrome that sits on the white page:
+
+| Role | Light | Dark |
+|---|---|---|
+| page | `#FFFFFF` | `#FFFFFF` |
+| page-veil (behind text being edited) | `rgba(255,255,255,0.85)` | `rgba(255,255,255,0.85)` |
+| on-paper (text on white, e.g. initials style names) | `#13201B` | `#13201B` |
+| on-paper-muted ("Sign here" prompt) | `#4D5E57` | `#4D5E57` |
+| paper-mark (signing line, unchosen page-number spots) | `#C3CEC8` | `#C3CEC8` |
+| selection-ring | 1 px `page` halo, then 3 px `selection-on-page` | same |
+| marker-fill / marker-edge | `rgba(255,213,0,0.28)` / `rgba(230,170,0,0.9)` | same |
+| redaction-edge | `#C01C28` | `#C01C28` |
+| redaction-hatch | `rgba(17,17,17,0.6)` / `rgba(17,17,17,0.15)` stripes | same |
+| checker (behind a cut-out signature) | `#E3E5E8` squares on `page` | same |
+| source-1 … source-6 (which file a page came from) | `#7FB0F8` `#E5A50A` `#2EC27E` `#F08A3C` `#D58CDC` `#F66151` | same |
+| on-source | `#13201B` | `#13201B` |
 
 Radii: 18 px panels, 24 px dialogs, pill (half the height) for buttons and chips, 14 px for tiles inside panels.
 
@@ -50,6 +70,7 @@ Radii: 18 px panels, 24 px dialogs, pill (half the height) for buttons and chips
 ## What colour means
 - **Accent = the current thing:** the active tool, the selected pages, the current page number, the primary action, settings that are On, and the seal.
 - **The page and everything on it is the user's content, and the palette stops at its edge.** Stamp colours, marker yellow, text colours and the white page are content, never tokens. The only chrome drawn on the page is the selection outline, which uses `selection-on-page` in both modes, because the dark accent measures only 2.06:1 on white.
+- **Danger is only for destructive actions** (delete, remove). Warnings, cautions and errors are never danger: the missing-character note and any other caution is `text` in a note outlined with `outline`, and the wording carries the message. The "won't be password-protected" offer is outlined in `accent`, with its Export with password… button.
 - **Danger always has wording** ("Delete box", "Delete 2 pages") and a trash icon where space is short. Accent and danger measure **1.03:1 against each other in both modes**, so colour alone never carries danger.
 - `divider` is decorative and never the only edge of a control. Use `outline` for that.
 
@@ -60,7 +81,7 @@ Radii: 18 px panels, 24 px dialogs, pill (half the height) for buttons and chips
 
 ## Enforcement
 - No colour, font or radius literal outside `src/styles/tokens.css`, except in document content (see What colour means): `src/lib/stamps.js` colours, user-picked colours, and the font previews in the font picker.
-- `npm run lint:styles`: stylelint with `declaration-strict-value` on `color`, `background`, `background-color`, `border`, `border-color`, `outline`, `box-shadow`, `fill`, `stroke`, `font`, `font-family` and `border-radius`, which must use `var(--…)`. `inherit`, `currentColor`, `transparent` and `0` are allowed.
+- `npm run lint:styles`: stylelint with `declaration-strict-value` on `color`, `background`, `background-color`, `border` (and `border-top`/`-right`/`-bottom`/`-left`), `border-color`, `outline`, `box-shadow`, `fill`, `stroke`, `font`, `font-family` and `border-radius`, which must use `var(--…)`. `inherit`, `currentColor`, `transparent` and `0` are allowed.
 - `npm run check:literals` (a Node script, not grep): JSX/JS outside `src/lib/` and `src/styles/` contains no hex or `rgb(`/`hsl(` colours, no quoted font names in `fontFamily`/`font`, and no numeric `borderRadius`. Values must be `var(...)`.
 - Each check is proven both ways: silent on the real code, and catching one planted literal of each kind (colour, quoted font, px radius) in each file type it covers.
 - `color-scheme` and the mode toggle switch the token set on `:root[data-theme]`. No component reads the mode directly.
