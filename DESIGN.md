@@ -36,6 +36,9 @@ Typeface: Manrope, weights 400/500/600/700, bundled with `@fontsource` (never fe
 | divider (decorative only) | `#C3CEC8` | `#2A3934` |
 | outline (control edges, drop zone) | `#6A7C75` | `#71877C` |
 | selection-on-page | `#1D6B57` | `#1D6B57` |
+| danger-on-page (Redacted badge, annotation delete ×) | `#C01C28` | `#C01C28` |
+| danger-on-page-hover | `#9B1620` | `#9B1620` |
+| on-danger-on-page | `#FFFFFF` | `#FFFFFF` |
 | scrim | `rgba(19,32,27,0.42)` | `rgba(4,10,8,0.62)` |
 | shadow | `rgba(19,40,32,0.16)` | `rgba(2,10,7,0.60)` |
 | accent-fill-hover | `#175546` | `#7DD4B9` |
@@ -69,7 +72,7 @@ Radii: 18 px panels, 24 px dialogs, pill (half the height) for buttons and chips
 
 ## What colour means
 - **Accent = the current thing:** the active tool, the selected pages, the current page number, the primary action, settings that are On, and the seal.
-- **The page and everything on it is the user's content, and the palette stops at its edge.** Stamp colours, marker yellow, text colours and the white page are content, never tokens. The only chrome drawn on the page is the selection outline, which uses `selection-on-page` in both modes, because the dark accent measures only 2.06:1 on white.
+- **The page and everything on it is the user's content, and the palette stops at its edge.** Stamp colours, marker yellow, text colours and the white page are content, never tokens. Chrome drawn on the page or a thumbnail uses the `-on-page` roles, the same in both modes: the selection outline uses `selection-on-page` (the dark accent measures only 2.06:1 on white), and anything in the danger colour (the Redacted badge, the annotation delete ×) uses `danger-on-page` (the dark danger measures only 2.13:1 on white).
 - **Three tiers.** Danger is for destructive actions, errors and redaction. Cautions, such as missing characters and the redaction warning before export, are `text`-coloured notes with an `outline` edge. Offers, such as the re-lock offer, are outlined in `accent`.
 - **Danger always has wording** ("Delete box", "Delete 2 pages") and a trash icon where space is short. Accent and danger measure **1.03:1 against each other in both modes**, so colour alone never carries danger.
 - `divider` is decorative and never the only edge of a control. Use `outline` for that.

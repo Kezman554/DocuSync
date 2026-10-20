@@ -41,6 +41,9 @@ const PAIRS = [
   ['on-danger', 'danger-fill-hover', TEXT, 'Delete button, ×, hovered'],
   // Chrome on the white page, and content colours.
   ['selection-on-page', 'page', NON_TEXT, 'selection on page'],
+  ['danger-on-page', 'page', NON_TEXT, 'Redacted badge, × fill on the page'],
+  ['on-danger-on-page', 'danger-on-page', TEXT, 'Redacted badge, × text'],
+  ['on-danger-on-page', 'danger-on-page-hover', TEXT, '× text, hovered'],
   ['on-paper', 'page', TEXT, 'text on paper'],
   ['on-paper-muted', 'page', TEXT, 'text on paper'],
   ...sources.map((bg) => ['on-source', bg, TEXT, 'source badge']),

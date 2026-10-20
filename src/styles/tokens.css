@@ -69,6 +69,9 @@
   --divider: #c3cec8;
   --outline: #6a7c75;
   --selection-on-page: #1d6b57;
+  --danger-on-page: #c01c28;
+  --danger-on-page-hover: #9b1620;
+  --on-danger-on-page: #ffffff;
   --scrim: rgba(19, 32, 27, 0.42);
   --shadow: rgba(19, 40, 32, 0.16);
 }
@@ -91,6 +94,9 @@
   --divider: #2a3934;
   --outline: #71877c;
   --selection-on-page: #1d6b57;
+  --danger-on-page: #c01c28;
+  --danger-on-page-hover: #9b1620;
+  --on-danger-on-page: #ffffff;
   --scrim: rgba(4, 10, 8, 0.62);
   --shadow: rgba(2, 10, 7, 0.6);
 }

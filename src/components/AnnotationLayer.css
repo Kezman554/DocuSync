@@ -73,8 +73,8 @@
   padding: 0;
   border: none;
   border-radius: var(--radius-pill);
-  background: var(--danger);
-  color: var(--on-danger);
+  background: var(--danger-on-page);
+  color: var(--on-danger-on-page);
   font-size: 0.95rem;
   line-height: 22px;
   cursor: pointer;
@@ -82,7 +82,7 @@
 }
 
 .annotation__delete:hover {
-  background: var(--danger-fill-hover);
+  background: var(--danger-on-page-hover);
 }
 
 .annotation-layer__sr-only {
