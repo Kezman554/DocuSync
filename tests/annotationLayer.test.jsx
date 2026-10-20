@@ -41,11 +41,11 @@ const expectBox = (el, expected) => {
 
 /** Turn on the marker tool and click at (x, y) on the page. */
 async function placeMarker(user, x, y) {
-  await user.click(screen.getByRole('button', { name: 'Place marker' }));
+  await user.click(screen.getByRole('button', { name: 'Highlight' }));
   const el = await layer();
   pointer('pointerDown', el, x, y);
   pointer('pointerUp', el, x, y);
-  return screen.getByRole('button', { name: 'Marker 1' });
+  return screen.getByRole('button', { name: 'Highlight 1' });
 }
 
 describe('annotation layer', () => {
@@ -62,21 +62,21 @@ describe('annotation layer', () => {
     expect(marker).toHaveAttribute('aria-pressed', 'true');
     expect(marker).toHaveFocus();
     // One-shot tool: back to select mode.
-    expect(screen.getByRole('button', { name: 'Place marker' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Highlight' })).toHaveAttribute(
       'aria-pressed',
       'false'
     );
 
     // 125%, 150%: everything scales from the page's top-left — same PDF spot.
     await user.click(screen.getByRole('button', { name: 'Zoom in' }));
-    expectBox(screen.getByRole('button', { name: 'Marker 1' }), {
+    expectBox(screen.getByRole('button', { name: 'Highlight 1' }), {
       left: 175,
       top: 345,
       width: 150,
       height: 60,
     });
     await user.click(screen.getByRole('button', { name: 'Zoom in' }));
-    expectBox(screen.getByRole('button', { name: 'Marker 1' }), {
+    expectBox(screen.getByRole('button', { name: 'Highlight 1' }), {
       left: 210,
       top: 414,
       width: 180,
@@ -87,7 +87,7 @@ describe('annotation layer', () => {
     for (let i = 0; i < 4; i += 1) {
       await user.click(screen.getByRole('button', { name: 'Zoom out' }));
     }
-    expectBox(screen.getByRole('button', { name: 'Marker 1' }), {
+    expectBox(screen.getByRole('button', { name: 'Highlight 1' }), {
       left: 70,
       top: 138,
       width: 60,
@@ -95,7 +95,7 @@ describe('annotation layer', () => {
     });
     await user.click(screen.getByRole('button', { name: 'Zoom in' }));
     await user.click(screen.getByRole('button', { name: 'Zoom in' }));
-    expectBox(screen.getByRole('button', { name: 'Marker 1' }), {
+    expectBox(screen.getByRole('button', { name: 'Highlight 1' }), {
       left: 140,
       top: 276,
       width: 120,
@@ -113,11 +113,11 @@ describe('annotation layer', () => {
 
     await user.click(screen.getByRole('button', { name: 'Next page' }));
     const page2 = await layer(2);
-    expect(within(page2).queryByRole('button', { name: /^Marker/ })).toBeNull();
+    expect(within(page2).queryByRole('button', { name: /^Highlight \d/ })).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'Previous page' }));
     await layer(1);
-    expectBox(screen.getByRole('button', { name: 'Marker 1' }), {
+    expectBox(screen.getByRole('button', { name: 'Highlight 1' }), {
       left: 140,
       top: 276,
       width: 120,
@@ -132,7 +132,7 @@ describe('annotation layer', () => {
 
     // 90° clockwise: x' = PDF y, y' = PDF x — and it's now sideways.
     await user.click(screen.getByRole('button', { name: 'Rotate page right' }));
-    expectBox(screen.getByRole('button', { name: 'Marker 1' }), {
+    expectBox(screen.getByRole('button', { name: 'Highlight 1' }), {
       left: 468,
       top: 140,
       width: 48,
@@ -144,7 +144,7 @@ describe('annotation layer', () => {
     await user.click(thumb(1));
     await user.keyboard('{Alt>}{ArrowDown}{ArrowDown}{ArrowDown}{/Alt}');
     expect(screen.getByText('Page 4 of 4')).toBeInTheDocument();
-    expect(await layer(4)).toContainElement(screen.getByRole('button', { name: 'Marker 1' }));
+    expect(await layer(4)).toContainElement(screen.getByRole('button', { name: 'Highlight 1' }));
   });
 
   it('moves by dragging and with the arrow keys, staying on the page', async () => {
@@ -156,20 +156,20 @@ describe('annotation layer', () => {
     pointer('pointerDown', marker, 200, 300);
     pointer('pointerMove', el, 250, 320);
     pointer('pointerUp', el, 250, 320);
-    expectBox(screen.getByRole('button', { name: 'Marker 1' }), { left: 190, top: 296 });
+    expectBox(screen.getByRole('button', { name: 'Highlight 1' }), { left: 190, top: 296 });
 
     // Drag far off the page: clamped to the edge.
-    pointer('pointerDown', screen.getByRole('button', { name: 'Marker 1' }), 250, 320);
+    pointer('pointerDown', screen.getByRole('button', { name: 'Highlight 1' }), 250, 320);
     pointer('pointerMove', el, -400, -400);
     pointer('pointerUp', el, -400, -400);
-    expectBox(screen.getByRole('button', { name: 'Marker 1' }), { left: 0, top: 0 });
+    expectBox(screen.getByRole('button', { name: 'Highlight 1' }), { left: 0, top: 0 });
 
     // Keyboard: 1pt per press, 10pt with Shift — at 150% that's 1.5px / 15px.
     await user.click(screen.getByRole('button', { name: 'Zoom in' }));
     await user.click(screen.getByRole('button', { name: 'Zoom in' }));
-    screen.getByRole('button', { name: 'Marker 1' }).focus();
+    screen.getByRole('button', { name: 'Highlight 1' }).focus();
     await user.keyboard('{ArrowRight}{Shift>}{ArrowDown}{/Shift}');
-    expectBox(screen.getByRole('button', { name: 'Marker 1' }), { left: 1.5, top: 15 });
+    expectBox(screen.getByRole('button', { name: 'Highlight 1' }), { left: 1.5, top: 15 });
   });
 
   it('resizes from a corner handle', async () => {
@@ -182,7 +182,7 @@ describe('annotation layer', () => {
     pointer('pointerDown', se, 260, 324);
     pointer('pointerMove', el, 290, 344);
     pointer('pointerUp', el, 290, 344);
-    expectBox(screen.getByRole('button', { name: 'Marker 1' }), {
+    expectBox(screen.getByRole('button', { name: 'Highlight 1' }), {
       left: 140,
       top: 276,
       width: 150,
@@ -194,7 +194,7 @@ describe('annotation layer', () => {
     await user.click(screen.getByRole('button', { name: 'Zoom in' }));
     await user.click(screen.getByRole('button', { name: 'Zoom in' }));
     await user.click(screen.getByRole('button', { name: 'Zoom in' }));
-    expectBox(screen.getByRole('button', { name: 'Marker 1' }), {
+    expectBox(screen.getByRole('button', { name: 'Highlight 1' }), {
       left: 280,
       top: 552,
       width: 300,
@@ -205,13 +205,13 @@ describe('annotation layer', () => {
   it('draws a marker by dragging with the marker tool', async () => {
     const user = userEvent.setup();
     await openPdf(App, user);
-    await user.click(screen.getByRole('button', { name: 'Place marker' }));
+    await user.click(screen.getByRole('button', { name: 'Highlight' }));
     const el = await layer();
 
     pointer('pointerDown', el, 150, 110);
     pointer('pointerMove', el, 50, 50);
     pointer('pointerUp', el, 50, 50);
-    expectBox(screen.getByRole('button', { name: 'Marker 1' }), {
+    expectBox(screen.getByRole('button', { name: 'Highlight 1' }), {
       left: 50,
       top: 50,
       width: 100,
@@ -225,37 +225,37 @@ describe('annotation layer', () => {
     await placeMarker(user, 200, 300);
     await placeMarker(user, 400, 600);
     const el = await layer();
-    expect(screen.getAllByRole('button', { name: /^Marker/ })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: /^Highlight \d/ })).toHaveLength(2);
 
     // Clicking empty page deselects.
     pointer('pointerDown', el, 20, 20);
     pointer('pointerUp', el, 20, 20);
-    for (const m of screen.getAllByRole('button', { name: /^Marker/ })) {
+    for (const m of screen.getAllByRole('button', { name: /^Highlight \d/ })) {
       expect(m).toHaveAttribute('aria-pressed', 'false');
     }
 
     // Delete key on a focused marker.
-    screen.getByRole('button', { name: 'Marker 1' }).focus();
+    screen.getByRole('button', { name: 'Highlight 1' }).focus();
     await user.keyboard('{Delete}');
-    expect(screen.getAllByRole('button', { name: /^Marker/ })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /^Highlight \d/ })).toHaveLength(1);
 
     // Delete button on the selected marker.
-    pointer('pointerDown', screen.getByRole('button', { name: 'Marker 1' }), 400, 600);
+    pointer('pointerDown', screen.getByRole('button', { name: 'Highlight 1' }), 400, 600);
     pointer('pointerUp', el, 400, 600);
-    await user.click(screen.getByRole('button', { name: 'Delete marker 1' }));
-    expect(screen.queryByRole('button', { name: /^Marker/ })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Delete highlight 1' }));
+    expect(screen.queryByRole('button', { name: /^Highlight \d/ })).toBeNull();
   });
 
   it('Escape cancels the marker tool without placing anything', async () => {
     const user = userEvent.setup();
     await openPdf(App, user);
-    await user.click(screen.getByRole('button', { name: 'Place marker' }));
+    await user.click(screen.getByRole('button', { name: 'Highlight' }));
     (await layer()).focus();
     await user.keyboard('{Escape}');
-    expect(screen.getByRole('button', { name: 'Place marker' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Highlight' })).toHaveAttribute(
       'aria-pressed',
       'false'
     );
-    expect(screen.queryByRole('button', { name: /^Marker/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Highlight \d/ })).toBeNull();
   });
 });

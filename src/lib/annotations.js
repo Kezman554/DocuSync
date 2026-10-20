@@ -9,6 +9,10 @@
  *
  *   { id: string, type: 'marker' | 'text' | 'image', rect: { x, y, width, height }, … }
  *
+ * 'marker' is the Highlight tool (the user never sees "marker"): a
+ * see-through yellow rectangle, multiplied over the page so text under it
+ * stays dark, on screen and in the export.
+ *
  * Text adds its content/style (lib/textLayout.js). Images add
  *   { rotate, image: { id, bytes, mime, width, height, url } }
  * where `rotate` is the orientation fixed at placement (see ownFrame.js),
@@ -20,8 +24,15 @@
 /** Smallest annotation side, in viewport px, while resizing. */
 export const MIN_SIZE_PX = 12;
 
-/** Default size for a click-placed marker, in PDF points. */
+/** Default size for a click-placed highlight, in PDF points. */
 export const DEFAULT_MARKER_SIZE = { width: 120, height: 48 };
+
+/**
+ * The highlight's yellow and opacity, drawn with the Multiply blend mode.
+ * Document content, not chrome: the same as --marker-fill in
+ * src/styles/tokens.css, which the screen uses (a test keeps them equal).
+ */
+export const HIGHLIGHT = { color: '#ffd500', opacity: 0.28 };
 
 let counter = 0;
 /** Unique-enough id for a new annotation within this session. */

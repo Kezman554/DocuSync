@@ -23,11 +23,18 @@
   cursor: crosshair;
 }
 
-/* Test marker: a translucent highlighter box. */
+/* Highlight: see-through yellow multiplied over the page, so text under it
+   stays dark (the export draws the same: lib/annotations.js HIGHLIGHT). No
+   edge of its own; the selection outline shows when it's selected. */
 .annotation--marker {
   background: var(--marker-fill);
-  border: 2px solid var(--marker-edge);
+  mix-blend-mode: multiply;
+  border: 2px solid transparent;
   border-radius: var(--radius-paper);
+}
+
+.annotation--marker:hover {
+  border-color: var(--marker-edge);
 }
 
 /* Redaction: hatched, so what will be removed reads clearly but stays

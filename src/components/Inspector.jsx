@@ -13,7 +13,7 @@ import ProtectDialog from './ProtectDialog.jsx';
 import StampsPanel from './StampsPanel.jsx';
 import './Inspector.css';
 
-const KIND_NAMES = { marker: 'Marker', image: 'Image', redaction: 'Redaction box', text: 'Text box' };
+const KIND_NAMES = { marker: 'Highlight', image: 'Image', redaction: 'Redaction box', text: 'Text box' };
 
 /** A titled inspector section. */
 function Section({ title, id, children }) {
@@ -51,6 +51,7 @@ function Inspector({ stampsOpen = false }) {
     canDelete,
     rotateLeft,
     rotateRight,
+    deleteAnnotation,
     requestDelete,
     numbering,
     watermark,
@@ -133,6 +134,20 @@ function Inspector({ stampsOpen = false }) {
     textTarget || tool === 'text' ? (
       <Section title={textTarget ? 'Text box' : 'New text'}>
         <TextFormatBar />
+      </Section>
+    ) : annotation?.type === 'marker' ? (
+      <Section title="Highlight">
+        <p className="inspector__hint">
+          Drag to move it, or its corners to resize. It’s exported as a see-through yellow
+          over the page; the text under it stays text.
+        </p>
+        <button
+          type="button"
+          className="inspector__btn inspector__btn--danger"
+          onClick={() => deleteAnnotation(annotation.id)}
+        >
+          <span aria-hidden="true">🗑</span> Delete highlight
+        </button>
       </Section>
     ) : annotation ? (
       <Section title={annotation.stamp?.name ?? KIND_NAMES[annotation.type] ?? 'Annotation'}>

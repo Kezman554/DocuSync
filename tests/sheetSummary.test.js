@@ -15,7 +15,7 @@ describe('sheetSummary', () => {
   });
 
   it('names a selected annotation', () => {
-    expect(sheetSummary({ annotation: { name: 'Marker' } })).toBe('Marker');
+    expect(sheetSummary({ annotation: { name: 'Highlight' } })).toBe('Highlight');
   });
 
   it('says which pages the page actions act on', () => {

@@ -14,7 +14,7 @@
  */
 import { effectiveRotation } from './pageModel.js';
 import { formatPageRanges } from './pageRanges.js';
-import { getAnnotations } from './annotations.js';
+import { HIGHLIGHT, getAnnotations } from './annotations.js';
 import { hexToRgb, textDrawOps } from './textLayout.js';
 import { anchorOf, ownSize } from './ownFrame.js';
 import { pageNumberAnnotation } from './pageNumbering.js';
@@ -448,12 +448,29 @@ function imageEmbedder(output) {
 
 /**
  * Draw annotations onto a copied page. Annotation coordinates are in the
- * source page's PDF space, which the copied page keeps. Markers are an
- * on-screen test type and aren't exported; redaction boxes are applied by
- * flattening instead.
+ * source page's PDF space, which the copied page keeps. Redaction boxes are
+ * applied by flattening instead (a redacted page is composed with its
+ * other annotations first, so its highlights flatten with it).
  */
-async function drawAnnotations(page, annotations, embed, { degrees, rgb }) {
+async function drawAnnotations(page, annotations, embed, { degrees, rgb, BlendMode }) {
   for (const annotation of annotations) {
+    if (annotation.type === 'marker') {
+      // Highlight: a see-through yellow rectangle over the content, blended
+      // with Multiply so text under it stays dark — and stays text, since
+      // nothing is removed from the content stream.
+      const { r, g, b } = hexToRgb(HIGHLIGHT.color);
+      const { x, y, width, height } = annotation.rect;
+      page.drawRectangle({
+        x,
+        y,
+        width,
+        height,
+        color: rgb(r, g, b),
+        opacity: HIGHLIGHT.opacity,
+        blendMode: BlendMode.Multiply,
+      });
+      continue;
+    }
     if (annotation.type === 'image') {
       // Same own-frame placement as text: bottom-left anchor + rotation.
       const image = await embed.image(annotation.image);

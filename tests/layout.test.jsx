@@ -119,11 +119,11 @@ describe('header menus', () => {
   it('Esc in a menu leaves the active tool alone', async () => {
     const user = userEvent.setup();
     await openPdf(App, user);
-    await user.click(screen.getByRole('button', { name: 'Place marker' }));
+    await user.click(screen.getByRole('button', { name: 'Highlight' }));
     screen.getByRole('button', { name: 'File' }).focus();
     await user.keyboard('{Enter}{Escape}');
     expect(menu('File')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Place marker' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Highlight' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('with no document: File ▾ offers Open PDF… and From images…, and there is no Export', async () => {
@@ -145,7 +145,7 @@ describe('tool row', () => {
     const user = userEvent.setup();
     await openPdf(App, user);
     const row = screen.getByRole('toolbar', { name: 'Tools' });
-    for (const name of ['Place marker', 'Add text', 'Add image', 'Redact', 'Stamps', 'Previous page', 'Next page', 'Zoom out', 'Zoom in']) {
+    for (const name of ['Highlight', 'Add text', 'Add image', 'Redact', 'Stamps', 'Previous page', 'Next page', 'Zoom out', 'Zoom in']) {
       expect(within(row).getByRole('button', { name })).toBeInTheDocument();
     }
     expect(document.querySelector('.page-controls')).toBeNull(); // the old floating panel
@@ -154,7 +154,7 @@ describe('tool row', () => {
   it('with no document only Stamps works', () => {
     render(<App />);
     const row = screen.getByRole('toolbar', { name: 'Tools' });
-    for (const name of ['Place marker', 'Add text', 'Add image', 'Redact']) {
+    for (const name of ['Highlight', 'Add text', 'Add image', 'Redact']) {
       expect(within(row).getByRole('button', { name })).toBeDisabled();
     }
     expect(within(row).getByRole('button', { name: 'Stamps' })).toBeEnabled();
@@ -190,14 +190,31 @@ describe('inspector', () => {
   it('shows a selected annotation first, and drops it when it goes', async () => {
     const user = userEvent.setup();
     await openPdf(App, user);
-    await user.click(screen.getByRole('button', { name: 'Place marker' }));
+    await user.click(screen.getByRole('button', { name: 'Highlight' }));
     const el = await layer();
     pointer('pointerDown', el, 200, 300);
     pointer('pointerUp', el, 200, 300);
-    expect(headings()).toEqual(['Marker', 'Page 1', 'Document']);
+    expect(headings()).toEqual(['Highlight', 'Page 1', 'Document']);
 
-    await user.click(screen.getByRole('button', { name: /^Delete marker/ }));
+    await user.click(screen.getByRole('button', { name: /^Delete highlight 1/ }));
     expect(headings()).toEqual(['Page 1', 'Document']);
+  });
+
+  it('a selected highlight gets its own section, named, with Delete', async () => {
+    const user = userEvent.setup();
+    await openPdf(App, user);
+    await user.click(screen.getByRole('button', { name: 'Highlight' }));
+    const el = await layer();
+    pointer('pointerDown', el, 200, 300);
+    pointer('pointerUp', el, 200, 300);
+    expect(screen.getByRole('button', { name: 'Highlight 1' })).toBeInTheDocument();
+
+    const section = within(inspector()).getByRole('region', { name: 'Highlight' });
+    const del = within(section).getByRole('button', { name: 'Delete highlight' });
+    expect(del).toHaveClass('inspector__btn--danger');
+    await user.click(del);
+    expect(screen.queryByRole('button', { name: 'Highlight 1' })).toBeNull();
+    expect(within(inspector()).queryByRole('region', { name: 'Highlight' })).toBeNull();
   });
 
   it('a selected text box gets its format controls and the missing-character warning', async () => {

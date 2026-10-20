@@ -198,8 +198,6 @@ DocuSync — Progress Log
   (90° mapping) and reorder, drag move + clamp, keyboard nudge in points,
   resize stored in points, drag-to-draw, deselect/delete, Esc. Mutation
   check: ignoring zoom in the layer fails 2 tests.
-- Not yet baked into export (markers are a test annotation type; text/image/
-  signature sessions will add real types + export).
 
 2026-10-13 — Text annotations
 - src/lib/textLayout.js (pure): text annotation = { type:'text', text, font
@@ -216,7 +214,7 @@ DocuSync — Progress Log
   estimate); width only affects the selection box, not export positions.
 - exportPdf: draws text annotations with drawText (font embedded once per
   doc, rgb colour, rotate); unencodable chars (emoji/CJK) -> "?" instead of
-  failing; markers not exported.
+  failing.
 - UI: "T Text" tool (one-shot): click = top-left of a new box, type in place
   (textarea in the box's own frame), Esc/blur finishes, empty boxes removed;
   Enter or double-click re-edits; drag/arrow keys move; no resize handles
@@ -1037,3 +1035,28 @@ DocuSync — Progress Log
 - Checked in the production build: a headed Edge window (own profile,
   captured with PrintWindow) shows the icon in the tab in the light and the
   dark browser theme.
+
+2026-10-20 — Highlight: the marker tool, renamed and exported
+- Bug: markers were drawn on screen but dropped on export, so a user who
+  marked a page lost it. Now the Highlight tool. Internal type and tool name
+  stay 'marker' (annotations aren't stored, but 'marker' runs through the
+  lib, layer and tests); everything the user sees says Highlight: tool row
+  label, highlighter icon (inline SVG), accessible name "Highlight",
+  tooltip, annotation names ("Highlight 1"), the placing hint, inspector.
+- Screen: --marker-fill with mix-blend-mode: multiply, so text under it
+  stays dark; no edge except on hover/selection. Click/drag unchanged.
+- Export (lib/exportPdf.js drawAnnotations): drawRectangle over the page
+  content, HIGHLIGHT colour #ffd500 at opacity 0.28, BlendMode.Multiply.
+  Nothing is removed from the content stream, so the text stays text. On a
+  redacted page it's drawn in staging and flattened with the page.
+  HIGHLIGHT lives in lib/annotations.js; a test keeps it equal to the
+  --marker-fill token.
+- Inspector: a selected highlight gets a "Highlight" section with Delete
+  highlight (danger).
+- Tests: 504 (+6 tests/highlight.test.js: rectangle after the text with a
+  Multiply ExtGState, ca 0.28, in the yellow; pdf.js still extracts the
+  words; render: glyph under it stays dark, blank paper under it turns
+  yellow, paper outside stays white; on a redacted page it's flattened and
+  still yellow; colour matches the token. +1 inspector section/Delete.)
+  Mutation check: skipping highlights in export fails the three export
+  tests. UI tests renamed (Highlight, Highlight 1, Delete highlight 1).

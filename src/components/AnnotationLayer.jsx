@@ -55,7 +55,7 @@ function annotationLabel(annotation, counts) {
     return `${kind} ${bump(kind)}: ${stamp.name}`;
   }
   const name =
-    { marker: 'Marker', text: 'Text', image: 'Image', redaction: 'Redaction' }[annotation.type] ??
+    { marker: 'Highlight', text: 'Text', image: 'Image', redaction: 'Redaction' }[annotation.type] ??
     'Annotation';
   const n = bump(name);
   return annotation.type === 'text' && annotation.text ? `${name} ${n}: ${annotation.text}` : `${name} ${n}`;
@@ -64,7 +64,7 @@ function annotationLabel(annotation, counts) {
 const CLICK_SLOP = 4;
 
 const HINTS = {
-  marker: 'Click to place a marker, or drag to draw one. Escape cancels.',
+  marker: 'Drag over what to highlight, or click to place a highlight. Escape cancels.',
   text: 'Click where the text should start, then type. Escape cancels.',
   image: 'Click to place the image, or drag to size it. Escape cancels.',
   stamp: 'Click to place the stamp; keep clicking to place more. Escape stops.',

@@ -26,11 +26,22 @@ function ToolRow({ stampsOpen = false, onToggleStamps }) {
           onClick={() => setTool(tool === 'marker' ? 'select' : 'marker')}
           aria-pressed={tool === 'marker'}
           disabled={!hasDocument}
-          aria-label="Place marker"
-          title="Place marker — click the page, or drag to draw (Esc cancels)"
+          aria-label="Highlight"
+          title="Highlight — drag over text, or click to place one (Esc cancels)"
         >
-          <span aria-hidden="true">▭</span>
-          <span className="tool-row__text">Marker</span>
+          {/* A highlighter pen, nib down-left, with its stroke. */}
+          <svg className="tool-row__icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path
+              d="M10.2 1.8l4 4-6.3 6.3H3.9V8.1z M3.9 12.1L2 14h3.4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+            <path d="M7.4 4.6l4 4" stroke="currentColor" strokeWidth="1.4" />
+          </svg>
+          <span className="tool-row__text">Highlight</span>
         </button>
         <button
           type="button"

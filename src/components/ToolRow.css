@@ -87,6 +87,12 @@
   background: var(--divider);
 }
 
+.tool-row__icon {
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
+}
+
 .tool-row__btn--tool {
   display: inline-flex;
   align-items: center;
