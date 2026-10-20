@@ -18,15 +18,8 @@ const STAGE_LABELS = {
  * protects just those pages, encrypting as the last step.
  */
 function ExtractPagesDialog({ onClose }) {
-  const {
-    pages,
-    selected,
-    currentPage,
-    extractPages,
-    redactedPages,
-    hadPassword,
-    dropsFieldsFor,
-  } = useDocumentContext();
+  const { pages, selected, currentPage, extractPages, redactedPages, hadPassword } =
+    useDocumentContext();
   const inputId = useId();
   const hintId = useId();
 
@@ -117,12 +110,6 @@ function ExtractPagesDialog({ onClose }) {
       </div>
       {protect && (
         <PasswordFields value={protection} onChange={setProtection} disabled={working} />
-      )}
-      {result.pages && dropsFieldsFor(result.pages) && (
-        <p className="confirm-dialog__warning" role="note">
-          A form field on the chosen pages also appears on pages left out, so it won’t be
-          included.
-        </p>
       )}
       {redactedCount > 0 && (
         <p className="confirm-dialog__warning" role="note">

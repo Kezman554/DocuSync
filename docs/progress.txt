@@ -720,16 +720,52 @@ DocuSync — Progress Log
 - Fix (exportPdf.js): isolateRedactedPages → isolateExcludedPages, run for
   every source page not exported as-is (redacted, deleted, not extracted):
   empties them and their annotations, and drops from kept pages the
-  widgets of any field with a widget on an excluded page. copyPagesLinked
+  widgets of any field with a widget on an excluded page (for left-out
+  pages, superseded on 2026-10-20: see below). copyPagesLinked
   replaces copyPages for the export: one PDFObjectCopier per source with
   each kept page's new ref claimed first (so links land on the real page)
   and excluded pages/annotations mapped to null (no stray copies at all).
 - Users would notice a repeated field vanishing, so Delete pages and
-  Extract pages say so in one sentence — only when it applies, from pdf.js
-  getFieldObjects() per source (lib/formFields.js).
+  Extract pages said so in one sentence (lib/formFields.js) — removed on
+  2026-10-20 along with the rule that needed it.
 - Tests: 402 passing (+15 tests/excludedPages.test.js: 3 controls, 6
   route × mode, kept-page link resolves to the right page with no stray
   page object, all-kept field keeps its value, Compress, 3 formFields;
   +2 tests/sharedFieldsUi.test.jsx). The strict search moved to
   tests/helpers/pdfSearch.js (shared with redaction.test.js), plus pdf.js
   extraction of page text, annotation contents and field values.
+
+2026-10-20 — Shared fields across a left-out page: prune /Kids, keep the field
+- Redacted and left-out pages now differ (isolateExcludedPages gets the
+  redacted pages separately). Redacted: unchanged — a field with a widget
+  on a redacted page is removed from every page (its value is what was
+  redacted). Left-out (deleted, not extracted): only that page's widget is
+  removed from the field (pruneFromFields); the field and its widgets on
+  kept pages stay with their value, which already shows on the kept page.
+  The leak was never the value but the excluded page, reached through the
+  widget's /P and the field's /Kids; emptying excluded pages and mapping
+  references to them to null (2026-10-19) already closes that.
+- A field left with no widgets is removed from its own parent, recursively
+  (otherwise a kept sibling reaches it via /Parent → /Kids).
+- Radio/checkbox groups (renumberButtonStates): /Opt holds one export value
+  per /Kids position, so it loses the same positions. pdf-lib — and other
+  producers — name a widget's on-state by that position ("0", "1", … in
+  /AP /N and /D, /AS, and /V), so after a removal earlier in the list those
+  are renamed to the new positions; otherwise a kept option points at the
+  wrong label or none. Named states (/Yes, /Choice2) keep their names. A
+  positional /V only follows the renaming — its old name may now belong to
+  another option — and becomes /Off if its option was removed, which also
+  keeps the left-out page's choice out of the file.
+- Removed lib/formFields.js, its context wiring and the Delete pages /
+  Extract pages sentences: fields no longer vanish from kept pages. The
+  redaction warning's field sentence stays (that rule is unchanged).
+- Tests: 401 passing. excludedPages.test.js: shared-field route now expects
+  page 2's text gone but the field kept on page 1 with its value and one
+  widget; +4: three-option radio, page 3 chosen, page 1 deleted → one
+  widget per remaining page renamed "0"/"1", /Opt lined up with /Kids,
+  /V still page 3's option, pdf.js agrees; chosen option on the deleted
+  page → /Off, its label gone; later unselected option removed → choice
+  kept; empty sub-field removed from its parent. Removed: 3 formFields
+  tests, tests/sharedFieldsUi.test.jsx (2). Each new test fails when the
+  piece it covers is disabled (no upward pruning / no renumbering / /V
+  looked up by name).

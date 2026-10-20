@@ -22,7 +22,8 @@ beforeAll(async () => {
 
 const BODY = 'EXCLUDED-BODY-TEXT';
 const COMMENT = 'EXCLUDED-COMMENT';
-const FIELD = 'EXCLUDED-FIELD-VALUE';
+// A shared field's value also shows on the kept page, so it isn't page 2's to hide.
+const SHARED_VALUE = 'SHARED-FIELD-VALUE';
 
 /** Three pages; page 2 is the one that gets left out. */
 async function threePages() {
@@ -91,14 +92,59 @@ const ROUTES = {
   async 'shared form field'() {
     const { doc, pages } = await threePages();
     const field = doc.getForm().createTextField('shared');
-    field.setText(FIELD);
+    field.setText(SHARED_VALUE);
     field.addToPage(pages[0], { x: 72, y: 600, width: 200, height: 24 });
     field.addToPage(pages[1], { x: 72, y: 600, width: 200, height: 24 });
-    return { bytes: await doc.save(), words: [BODY, FIELD] };
+    // Page 2's widget is pruned from the field; the field stays on page 1.
+    return { bytes: await doc.save(), words: [BODY], keepsField: 'shared' };
   },
 };
 
 const src = (bytes) => ({ s1: { name: 'routes.pdf', bytes } });
+
+/** pdf.js's view of page `n`'s fields: { name: value }. */
+async function fieldsOnPage(bytes, n) {
+  const pdf = await loadPdf(bytes);
+  const annots = await (await pdf.getPage(n)).getAnnotations();
+  await pdf.destroy();
+  return Object.fromEntries(annots.filter((a) => a.fieldName).map((a) => [a.fieldName, a.fieldValue]));
+}
+
+/**
+ * The field named `name` (its /T) as stored in the file: each widget's page,
+ * on-state and /AS, the /Opt labels, and /V.
+ */
+async function fieldDict(bytes, name) {
+  const doc = await PDFDocument.load(bytes);
+  const { context } = doc;
+  const pageRefs = doc.getPages().map((p) => p.ref);
+  for (const [, object] of context.enumerateIndirectObjects()) {
+    if (!(object instanceof PDFDict) || object.get(PDFName.of('T'))?.decodeText?.() !== name) {
+      continue;
+    }
+    const kids = context.lookup(object.get(PDFName.of('Kids')))?.asArray() ?? [];
+    const opt = context.lookup(object.get(PDFName.of('Opt')))?.asArray() ?? [];
+    const value = object.get(PDFName.of('V'));
+    return {
+      kids: kids.map((ref) => {
+        const kid = context.lookup(ref);
+        // Buttons have a dict of states under /AP /N; text fields one stream.
+        const states = context.lookup(context.lookup(kid.get(PDFName.of('AP'))).get(PDFName.of('N')));
+        return {
+          page: pageRefs.indexOf(kid.get(PDFName.of('P'))) + 1,
+          on:
+            states instanceof PDFDict
+              ? states.keys().map((k) => k.decodeText()).find((k) => k !== 'Off')
+              : undefined,
+          as: kid.get(PDFName.of('AS'))?.decodeText(),
+        };
+      }),
+      opt: opt.map((o) => o.decodeText()),
+      value: value?.decodeText?.() ?? value?.toString(),
+    };
+  }
+  return null;
+}
 
 /** The two ways a page is left out: deleted before Export PDF, or not extracted. */
 const MODES = {
@@ -134,6 +180,11 @@ describe.each(Object.keys(ROUTES))('route: %s', (route) => {
     );
     // The kept pages are still there.
     expect(await extractedText(loadPdf, out)).toContain('Kept page one');
+    if (fixture.keepsField) {
+      // …and so is the shared field, on page 1 only, with its value.
+      expect(await fieldsOnPage(out, 1)).toEqual({ [fixture.keepsField]: SHARED_VALUE });
+      expect((await fieldDict(out, fixture.keepsField)).kids).toHaveLength(1);
+    }
   });
 });
 
@@ -199,33 +250,97 @@ describe('other paths that write a PDF', () => {
   });
 });
 
-describe('formFields helpers (which fields an export drops)', () => {
-  it('lists the pages of fields spread over several pages, ignoring parents', async () => {
-    const { sharedFieldPages } = await import('../src/lib/formFields.js');
-    expect(sharedFieldPages(null)).toEqual([]);
-    const pages = sharedFieldPages({
-      shared: [{ page: -1 }, { page: 0 }, { page: 1 }],
-      single: [{ page: -1 }, { page: 2 }],
-      twiceOnOnePage: [{ page: 3 }, { page: 3 }],
-    });
-    expect(pages.map((set) => [...set])).toEqual([[0, 1]]);
-  });
+describe('radio groups and nested fields across a left-out page', () => {
+  /** A radio group "pick" with one option per page, labelled after its page. */
+  async function radioOnThreePages(selected) {
+    const { doc, pages } = await threePages();
+    const group = doc.getForm().createRadioGroup('pick');
+    const labels = ['OPTION-ON-PAGE-1', 'OPTION-ON-PAGE-2', 'OPTION-ON-PAGE-3'];
+    labels.forEach((label, i) =>
+      group.addOptionToPage(label, pages[i], { x: 72, y: 600, width: 20, height: 20 })
+    );
+    group.select(labels[selected]);
+    return doc.save();
+  }
 
-  it('says a field is dropped only when it’s on a kept page and a left-out one', async () => {
-    const { dropsSharedField } = await import('../src/lib/formFields.js');
-    const fields = { s1: [new Set([0, 1])] };
-    const entries = (...sourcePages) => sourcePages.map((n) => ({ sourceId: 's1', sourcePage: n }));
-    expect(dropsSharedField(entries(1, 3), fields)).toBe(true); // page 2 left out
-    expect(dropsSharedField(entries(1, 2, 3), fields)).toBe(false);
-    expect(dropsSharedField(entries(3), fields)).toBe(false); // the whole field is gone anyway
-    expect(dropsSharedField(entries(1, 3), {})).toBe(false); // no field info
-  });
+  const deletePage = (bytes, n) => {
+    const model = createPageModel(3);
+    return buildPdf(src(bytes), deletePages(model, [model[n - 1].id]));
+  };
 
-  it('agrees with pdf.js on a real file', async () => {
-    const { sharedFieldPages } = await import('../src/lib/formFields.js');
-    const { bytes } = await ROUTES['shared form field']();
+  /** pdf.js: for each page, whether its "pick" widget is the selected one. */
+  async function selection(bytes) {
     const pdf = await loadPdf(bytes);
-    expect(sharedFieldPages(await pdf.getFieldObjects()).map((s) => [...s])).toEqual([[0, 1]]);
+    const out = [];
+    for (let n = 1; n <= pdf.numPages; n += 1) {
+      const annots = await (await pdf.getPage(n)).getAnnotations();
+      const radio = annots.find((a) => a.fieldName === 'pick');
+      out.push(radio ? radio.fieldValue === radio.buttonValue : null);
+    }
     await pdf.destroy();
+    return out;
+  }
+
+  it('renumbers options after an earlier one is removed (page 1 deleted, page 3 chosen)', async () => {
+    const before = await radioOnThreePages(2);
+    // pdf-lib names states by /Opt position: the three widgets are "0", "1", "2".
+    expect((await fieldDict(before, 'pick')).kids.map((k) => k.on)).toEqual(['0', '1', '2']);
+
+    const out = await deletePage(before, 1);
+    expect(await fieldDict(out, 'pick')).toEqual({
+      // One widget per remaining page, renamed to its new position…
+      kids: [
+        { page: 1, on: '0', as: 'Off' },
+        { page: 2, on: '1', as: '1' },
+      ],
+      // …/Opt lined up with /Kids…
+      opt: ['OPTION-ON-PAGE-2', 'OPTION-ON-PAGE-3'],
+      // …and the old page 3's option is still the selected one.
+      value: '1',
+    });
+    // pdf.js agrees: the widget from page 3 (now page 2) is the selected one.
+    expect(await selection(out)).toEqual([false, true]);
+    expect(await fileContains(out, 'OPTION-ON-PAGE-1')).toBe(false);
+  });
+
+  it('clears the choice when the selected option was on the left-out page', async () => {
+    const out = await deletePage(await radioOnThreePages(1), 2);
+    const field = await fieldDict(out, 'pick');
+    // Not "1": after renumbering that name belongs to page 3's option.
+    expect(field.value).toBe('Off');
+    expect(field.opt).toEqual(['OPTION-ON-PAGE-1', 'OPTION-ON-PAGE-3']);
+    expect(field.kids.map((k) => k.as)).toEqual(['Off', 'Off']);
+    expect(await selection(out)).toEqual([false, false]);
+    expect(await fileContains(out, 'OPTION-ON-PAGE-2')).toBe(false);
+  });
+
+  it('keeps the choice when only a later, unselected option is removed', async () => {
+    const out = await deletePage(await radioOnThreePages(0), 3);
+    expect(await fieldDict(out, 'pick')).toEqual({
+      kids: [
+        { page: 1, on: '0', as: '0' },
+        { page: 2, on: '1', as: 'Off' },
+      ],
+      opt: ['OPTION-ON-PAGE-1', 'OPTION-ON-PAGE-2'],
+      value: '0',
+    });
+    expect(await selection(out)).toEqual([true, false]);
+  });
+
+  it('removes a sub-field left with no widgets from its parent', async () => {
+    const { doc, pages } = await threePages();
+    const form = doc.getForm();
+    const child = form.createTextField('group.child'); // only on the left-out page
+    child.setText('CHILD-ON-PAGE-2');
+    child.addToPage(pages[1], { x: 72, y: 600, width: 200, height: 24 });
+    const other = form.createTextField('group.other');
+    other.setText('OTHER-KEPT');
+    other.addToPage(pages[0], { x: 72, y: 600, width: 200, height: 24 });
+
+    const out = await deletePage(await doc.save(), 2);
+    // Reachable through other → group → /Kids if the emptied child stayed.
+    expect(await fileContains(out, 'CHILD-ON-PAGE-2')).toBe(false);
+    expect(await fieldsOnPage(out, 1)).toEqual({ 'group.other': 'OTHER-KEPT' });
+    expect(await fileContains(out, BODY)).toBe(false);
   });
 });

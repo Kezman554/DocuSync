@@ -112,7 +112,10 @@ export async function buildPdf(sources, pages, { pageNumbers, watermark, flatten
     // or left out of an extract — before anything is copied into the export.
     const keptSet = new Set(kept);
     const excluded = [...Array(available).keys()].filter((n) => !keptSet.has(n));
-    const severed = excluded.length ? isolateExcludedPages(source, excluded, kept, pdfLib) : [];
+    const redactedPages = toStaging.map((i) => pages[i].sourcePage - 1);
+    const severed = excluded.length
+      ? isolateExcludedPages(source, excluded, redactedPages, kept, pdfLib)
+      : [];
     if (toOutput.length) place(toOutput, await copyPagesLinked(output, source, kept, severed, pdfLib));
   }
   output.setProducer('DocuSync (pdf-lib)');
@@ -199,18 +202,23 @@ export async function buildPdf(sources, pages, { pageNumbers, watermark, flatten
  *
  * - Excluded pages and their annotations are emptied, so whatever still
  *   points at them finds nothing.
- * - A form field with a widget on an excluded page loses its widgets on the
- *   kept pages too: the value is shared between them, so it would carry
- *   what was on the excluded page. Other fields are untouched.
+ * - A form field with a widget on a REDACTED page loses its widgets on the
+ *   kept pages too: the value is shared between them, so showing it
+ *   elsewhere would repeat what was redacted.
+ * - A widget on a page that's merely left out (deleted, not extracted) is
+ *   removed from its field (pruneFromFields); the field and its widgets on
+ *   kept pages stay, since its value already shows there.
  *
  * Returns the references to excluded pages and their annotations, for
  * copyPagesLinked to map to nothing.
  */
-function isolateExcludedPages(source, excludedIndices, keptIndices, { PDFName, PDFRef }) {
+function isolateExcludedPages(source, excludedIndices, redactedIndices, keptIndices, pdfLib) {
+  const { PDFName, PDFRef } = pdfLib;
   const { context } = source;
   const all = source.getPages();
   const excludedPages = excludedIndices.map((n) => all[n]);
   const excludedNodes = new Set(excludedPages.map((p) => p.node));
+  const redactedNodes = new Set(redactedIndices.map((n) => all[n].node));
   const keptPages = keptIndices.map((n) => all[n]).filter((p) => !excludedNodes.has(p.node));
   const Subtype = PDFName.of('Subtype');
   const isWidget = (dict) => dict?.get(Subtype) === PDFName.of('Widget');
@@ -228,23 +236,31 @@ function isolateExcludedPages(source, excludedIndices, keptIndices, { PDFName, P
     return field;
   };
 
-  const excludedFields = new Set();
+  const redactedFields = new Set();
+  const leftOutWidgets = [];
   for (const node of excludedNodes) {
     for (const entry of annotationsOf(node)) {
-      const dict = context.lookup(entry);
-      if (isWidget(dict)) excludedFields.add(fieldOf(entry));
+      if (!isWidget(context.lookup(entry))) continue;
+      if (redactedNodes.has(node)) redactedFields.add(fieldOf(entry));
+      else if (entry instanceof PDFRef) leftOutWidgets.push(entry);
     }
   }
 
-  if (excludedFields.size) {
+  if (redactedFields.size) {
     for (const page of keptPages) {
       const entries = annotationsOf(page.node);
       const kept = entries.filter(
-        (entry) => !(isWidget(context.lookup(entry)) && excludedFields.has(fieldOf(entry)))
+        (entry) => !(isWidget(context.lookup(entry)) && redactedFields.has(fieldOf(entry)))
       );
       if (kept.length !== entries.length) page.node.set(PDFName.of('Annots'), context.obj(kept));
     }
   }
+  // Before emptying, while the widgets still name their /Parent.
+  pruneFromFields(
+    context,
+    leftOutWidgets.filter((ref) => !redactedFields.has(fieldOf(ref))),
+    pdfLib
+  );
 
   const severed = [];
   const Type = PDFName.of('Type');
@@ -261,6 +277,117 @@ function isolateExcludedPages(source, excludedIndices, keptIndices, { PDFName, P
     empty(page.node, [Type]);
   }
   return severed;
+}
+
+/**
+ * Remove widgets (refs) from their fields' /Kids. A field left with no kids
+ * is removed from its own parent in turn, so nothing of it stays reachable
+ * from the fields that remain.
+ */
+function pruneFromFields(context, widgetRefs, pdfLib) {
+  const { PDFName, PDFRef } = pdfLib;
+  const byParent = new Map();
+  for (const ref of widgetRefs) {
+    const parent = context.lookup(ref)?.get(PDFName.of('Parent'));
+    if (!(parent instanceof PDFRef)) continue; // its own field: it goes with its page
+    if (!byParent.has(parent)) byParent.set(parent, new Set());
+    byParent.get(parent).add(ref);
+  }
+  for (const [parent, removed] of byParent) removeKids(context, parent, removed, pdfLib);
+}
+
+function removeKids(context, parentRef, removed, pdfLib) {
+  const { PDFArray, PDFDict, PDFName, PDFRef } = pdfLib;
+  const parent = context.lookup(parentRef, PDFDict);
+  const kids = context.lookup(parent.get(PDFName.of('Kids')));
+  if (!(kids instanceof PDFArray)) return;
+  const oldKids = kids.asArray();
+  const keptKids = oldKids.filter((kid) => !removed.has(kid));
+  if (inheritedName(context, parent, 'FT', pdfLib) === PDFName.of('Btn')) {
+    renumberButtonStates(context, parent, oldKids, removed, pdfLib);
+  }
+  parent.set(PDFName.of('Kids'), context.obj(keptKids));
+  if (keptKids.length) return;
+  const grandparent = parent.get(PDFName.of('Parent'));
+  if (grandparent instanceof PDFRef) removeKids(context, grandparent, new Set([parentRef]), pdfLib);
+}
+
+/** A field attribute, looked up the /Parent chain as PDF inheritance does. */
+function inheritedName(context, dict, key, { PDFDict, PDFName, PDFRef }) {
+  let node = dict;
+  for (let depth = 0; node instanceof PDFDict && depth < 32; depth += 1) {
+    const value = node.get(PDFName.of(key));
+    if (value) return value;
+    const parent = node.get(PDFName.of('Parent'));
+    node = parent instanceof PDFRef ? context.lookup(parent) : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Keep a radio/checkbox group consistent after some of its widgets are
+ * removed. Each widget's export value is the /Opt entry at its position in
+ * /Kids, so /Opt loses the same positions. Producers such as pdf-lib name a
+ * widget's on-state by that position ("0", "1", …, under /AP /N and /D and
+ * in /AS, and in /V), so those names are renumbered to the new positions —
+ * otherwise a kept option would point at the wrong label, or at none.
+ * Named states (/Yes, /Choice2) aren't positions and keep their names.
+ * /V follows its option; if that option was removed, the field is /Off,
+ * which also keeps the left-out page's choice out of the file.
+ */
+function renumberButtonStates(context, field, oldKids, removed, { PDFArray, PDFDict, PDFName }) {
+  const Off = PDFName.of('Off');
+  const optArray = context.lookup(field.get(PDFName.of('Opt')));
+  const opt = optArray instanceof PDFArray && optArray.size() === oldKids.length ? optArray : null;
+  const positional = (state) => Boolean(opt) && /^\d+$/.test(state.decodeText());
+
+  const newIndex = new Map(); // old position in /Kids → new position
+  oldKids.forEach((kid, i) => {
+    if (!removed.has(kid)) newIndex.set(i, newIndex.size);
+  });
+
+  const renamed = new Map(); // old positional state → new name (first widget wins)
+  const keptStates = new Set();
+  oldKids.forEach((kidRef, i) => {
+    if (removed.has(kidRef)) return;
+    const kid = context.lookup(kidRef, PDFDict);
+    const ap = context.lookup(kid.get(PDFName.of('AP')));
+    const normal = ap instanceof PDFDict ? context.lookup(ap.get(PDFName.of('N'))) : undefined;
+    const on = normal instanceof PDFDict ? normal.keys().find((key) => key !== Off) : undefined;
+    if (!on) return;
+    let state = on;
+    if (positional(on)) {
+      // Its option's new position; if that entry went (shared with a removed
+      // widget), the widget's own entry, which holds the same label.
+      const option = Number(on.decodeText());
+      state = PDFName.of(String(newIndex.get(newIndex.has(option) ? option : i)));
+      if (state !== on) {
+        for (const key of ['N', 'D']) {
+          const states = context.lookup(ap.get(PDFName.of(key)));
+          if (!(states instanceof PDFDict) || !states.has(on)) continue;
+          states.set(state, states.get(on));
+          states.delete(on);
+        }
+        if (kid.get(PDFName.of('AS')) === on) kid.set(PDFName.of('AS'), state);
+      }
+      if (!renamed.has(on)) renamed.set(on, state);
+    }
+    keptStates.add(state);
+  });
+
+  if (opt) {
+    field.set(
+      PDFName.of('Opt'),
+      context.obj(opt.asArray().filter((_, i) => newIndex.has(i)))
+    );
+  }
+  const value = field.get(PDFName.of('V'));
+  if (value instanceof PDFName && value !== Off) {
+    // A positional value only follows the renaming: its old name may now
+    // belong to a different option.
+    const next = positional(value) ? renamed.get(value) : value;
+    field.set(PDFName.of('V'), next && keptStates.has(next) ? next : Off);
+  }
 }
 
 /**
