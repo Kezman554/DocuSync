@@ -70,7 +70,7 @@ Radii: 18 px panels, 24 px dialogs, pill (half the height) for buttons and chips
 ## What colour means
 - **Accent = the current thing:** the active tool, the selected pages, the current page number, the primary action, settings that are On, and the seal.
 - **The page and everything on it is the user's content, and the palette stops at its edge.** Stamp colours, marker yellow, text colours and the white page are content, never tokens. The only chrome drawn on the page is the selection outline, which uses `selection-on-page` in both modes, because the dark accent measures only 2.06:1 on white.
-- **Danger is only for destructive actions** (delete, remove). Warnings, cautions and errors are never danger: the missing-character note and any other caution is `text` in a note outlined with `outline`, and the wording carries the message. The "won't be password-protected" offer is outlined in `accent`, with its Export with password… button.
+- **Three tiers.** Danger is for destructive actions, errors and redaction. Cautions, such as missing characters and the redaction warning before export, are `text`-coloured notes with an `outline` edge. Offers, such as the re-lock offer, are outlined in `accent`.
 - **Danger always has wording** ("Delete box", "Delete 2 pages") and a trash icon where space is short. Accent and danger measure **1.03:1 against each other in both modes**, so colour alone never carries danger.
 - `divider` is decorative and never the only edge of a control. Use `outline` for that.
 

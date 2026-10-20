@@ -113,7 +113,7 @@
   max-width: min(420px, calc(100vw - 2rem));
   padding: 0.5rem 0.5rem 0.5rem 0.85rem;
   border-radius: var(--radius-tile);
-  border: 1px solid var(--outline);
+  border: 1px solid var(--danger);
   background: var(--raised);
   color: var(--text);
   font-size: 0.85rem;

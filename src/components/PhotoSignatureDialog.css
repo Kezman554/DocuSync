@@ -48,10 +48,7 @@
 }
 
 .photo-signature__status--error {
-  padding: 0.35rem 0.6rem;
-  border: 1px solid var(--outline);
-  border-radius: var(--radius-tile);
-  color: var(--text);
+  color: var(--danger);
 }
 
 .photo-signature__controls .confirm-dialog__label {

@@ -25,7 +25,7 @@
 }
 
 .images-pdf__item--error .images-pdf__meta {
-  color: var(--text);
+  color: var(--danger);
 }
 
 .images-pdf__thumb {

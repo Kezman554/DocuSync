@@ -153,9 +153,8 @@
   line-height: 1.2rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  border: 1px solid var(--outline);
-  color: var(--text);
-  background: var(--raised);
+  color: var(--on-danger);
+  background: var(--danger);
   box-shadow: 0 1px 3px var(--shadow);
 }
 

@@ -116,11 +116,17 @@
   min-height: 1.2em;
 }
 
-/* Errors and cautions: the wording carries them, not colour (danger is only
-   for destructive actions). */
-.confirm-dialog__hint--error {
-  color: var(--text);
+.confirm-dialog__input[aria-invalid='true'] {
+  border-color: var(--danger);
 }
+
+.confirm-dialog__hint--error {
+  color: var(--danger);
+}
+
+/* Cautions (as below and the warning further down): text colour in an
+   outlined note; the wording carries the message. Danger is for destructive
+   actions, errors and redaction. */
 
 /* Heads-up that doesn't block (e.g. characters that won't export). */
 .confirm-dialog__hint--warn {

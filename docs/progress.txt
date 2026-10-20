@@ -895,3 +895,15 @@ DocuSync — Progress Log
   worker (CDP auto-attach): open PDF, select, export → 13 requests, all to
   localhost; none outside. Mode was set at DOM-interactive.
 - Tests: 462 passing (+19 pre-paint agreement). All three checks clean.
+
+2026-10-20 — Colour tiers: errors and redaction keep danger
+- Three tiers (DESIGN.md › What colour means): danger for destructive
+  actions, errors and redaction; cautions are text-coloured notes with an
+  outline edge; offers are outlined in accent.
+- Danger restored on the header error notice, stamps and photo-signature
+  errors, invalid-field edges (wording kept), confirm-dialog and image-list
+  errors, the viewer's load error and the Redacted badge.
+- check:contrast pairs now grouped by tier; added danger text on well
+  (viewer error, 4.75:1 light) and danger as a 3:1 edge on all four grounds.
+  Not covered: the Redacted badge and annotation × fills against the white
+  page measure 2.13:1 in dark (their text, on-danger, is 7.94:1).

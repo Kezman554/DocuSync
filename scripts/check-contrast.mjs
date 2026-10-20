@@ -23,17 +23,23 @@ const ROLES = [
 const grounds = ['ground', 'surface', 'raised', 'well'];
 const sources = [1, 2, 3, 4, 5, 6].map((n) => `source-${n}`);
 
-// [foreground, background, minimum, what it is]
+// [foreground, background, minimum, what it is]. Grouped by the colour
+// tiers in DESIGN.md › What colour means.
 const PAIRS = [
-  ...['text', 'text-secondary'].flatMap((fg) => grounds.map((bg) => [fg, bg, TEXT, 'text'])),
+  // Plain text, and cautions: text-coloured notes (their outline edge is below).
+  ...['text', 'text-secondary'].flatMap((fg) => grounds.map((bg) => [fg, bg, TEXT, 'text, caution note'])),
+  ...grounds.map((bg) => ['outline', bg, NON_TEXT, 'control edge, caution note edge']),
+  // Accent: the current thing, and offers (accent-outlined, e.g. re-lock).
   ...['ground', 'surface', 'raised'].map((bg) => ['accent', bg, TEXT, 'accent text']),
+  ...grounds.map((bg) => ['accent', bg, NON_TEXT, 'accent edge, offer outline']),
   ['on-accent', 'accent-fill', TEXT, 'on-accent'],
   ['on-accent', 'accent-fill-hover', TEXT, 'on-accent, hovered'],
-  ...['ground', 'surface', 'raised'].map((bg) => ['danger', bg, TEXT, 'danger text']),
-  ['on-danger', 'danger', TEXT, 'on-danger'],
-  ['on-danger', 'danger-fill-hover', TEXT, 'on-danger, hovered'],
-  ...grounds.map((bg) => ['outline', bg, NON_TEXT, 'control edge']),
-  ...grounds.map((bg) => ['accent', bg, NON_TEXT, 'accent edge']),
+  // Danger: destructive actions, errors and redaction.
+  ...grounds.map((bg) => ['danger', bg, TEXT, 'error text']),
+  ...grounds.map((bg) => ['danger', bg, NON_TEXT, 'invalid field, error notice edge']),
+  ['on-danger', 'danger', TEXT, 'Delete button, ×, Redacted badge'],
+  ['on-danger', 'danger-fill-hover', TEXT, 'Delete button, ×, hovered'],
+  // Chrome on the white page, and content colours.
   ['selection-on-page', 'page', NON_TEXT, 'selection on page'],
   ['on-paper', 'page', TEXT, 'text on paper'],
   ['on-paper-muted', 'page', TEXT, 'text on paper'],

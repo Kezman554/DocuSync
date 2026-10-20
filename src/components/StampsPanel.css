@@ -64,8 +64,9 @@
 .stamps-panel__error {
   margin: 0 0 0.75rem;
   padding: 0.45rem 0.6rem;
-  border: 1px solid var(--outline);
+  border-left: 3px solid var(--danger);
   border-radius: var(--radius-tile);
+  background: var(--raised);
   color: var(--text);
   font-size: 0.8rem;
 }
@@ -221,6 +222,10 @@
   color: var(--text);
 }
 
+.stamps-panel__input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
 .stamps-panel__hint {
   display: block;
   margin: 0.2rem 0 0.6rem;
@@ -229,7 +234,7 @@
 }
 
 .stamps-panel__hint--error {
-  color: var(--text);
+  color: var(--danger);
 }
 
 .initials-form__styles {
