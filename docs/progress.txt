@@ -808,3 +808,40 @@ DocuSync — Progress Log
   touchmove blocked only once lifted; selection vs single page; cancel by
   pointercancel and by leaving the sidebar; auto-scroll down and up; mouse
   and pen ignored; context menu suppressed during a press).
+
+2026-10-20 — Say which characters won't export (instead of a silent "?")
+- Added text is baked with pdf-lib's standard fonts (WinAnsi for Helvetica,
+  Times, Courier; own sets for Symbol and ZapfDingbats); anything else is
+  written as "?" while the preview (browser fonts) looks fine. Embedding a
+  Unicode font remains out of scope.
+- lib/exportableText.js: unexportableChars(text, font) uses pdf-lib's own
+  Encodings objects (@pdf-lib/standard-fonts, the copy pdf-lib uses — now a
+  direct dependency at the same exact version, deduped) and its choice of
+  encoding per font, so it can't drift: a test checks every BMP code point
+  plus emoji against the embedded font's getCharacterSet() — the set
+  export's "?" replacement uses — for every standard font. Graphemes, so an
+  emoji with a skin tone is one character; line breaks ignored (layout
+  splits lines). ZapfDingbats ticks (✓) correctly pass.
+- Inline warnings: text format bar (while typing or with a box selected),
+  watermark text field, page-numbers dialog. Page-number formats have no
+  free text and all export in every offered font today (pinned by a test);
+  the check is there for future formats. Empty warnings stay in the
+  accessibility tree (visually hidden) so screen readers announce them.
+- Before export: Export PDF asks "Some characters won't export" naming the
+  pages and characters (Cancel = go back, Export PDF = carry on; merged with
+  the redaction / password confirm when those apply). Extract pages,
+  Export images ("the exported images"), Compress and Export with password
+  show it inline, only for the pages that export. Never blocks.
+- Bundle: the encoding tables need pako to decompress; importing them
+  statically put 24 KB gzip on first load (main 299.5 → 360.6 kB). Now
+  lazy: exportableText + Encoding chunk (53.6 kB / 21 kB gzip, shared with
+  pdf-lib) loads when a document opens; Export PDF awaits it before
+  deciding, so the warning can't be skipped. Main entry 304.77 kB / 99.66
+  gzip (+5.3 kB). Verified in the built app in headless Edge: not fetched
+  before a PDF opens; typing and export warnings shown.
+- Tests: 435 passing (+9 tests/exportableText.test.js: the pass/report
+  lists, order, graphemes, line breaks, per-font sets, the drift check,
+  wording; +9 tests/exportableTextUi.test.jsx: warning appears/disappears
+  while typing and deleting, reselected box, watermark field, page-number
+  formats, Export PDF go back / carry on / silent when fine, Extract and
+  Export images only for affected pages, Compress and Export with password).

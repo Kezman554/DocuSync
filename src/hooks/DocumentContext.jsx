@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -42,6 +43,7 @@ import { DEFAULT_WATERMARK, watermarkApplies as watermarkAppliesFor } from '../l
 import {
   addAnnotation as addAnnotationModel,
   findAnnotation,
+  getAnnotations,
   newAnnotationId,
   removeAnnotation as removeAnnotationModel,
   updateAnnotation as updateAnnotationModel,
@@ -67,6 +69,11 @@ import { stampOrigin } from '../lib/stamps.js';
  * `currentPage` is a 1-based position in that list.
  */
 const DocumentContext = createContext(null);
+
+// lib/exportableText.js (which characters won't export) carries pdf-lib's
+// encoding tables and their decompressor, so it's its own chunk, loaded
+// once a document is open rather than on first visit.
+let textCheckPromise = null;
 
 /** The user closed the password prompt instead of unlocking the file. */
 class PasswordCancelled extends Error {
@@ -137,6 +144,8 @@ export function DocumentProvider({ children }) {
   const [passwordRequest, setPasswordRequest] = useState(null);
   // Encrypted file being checked before the prompt: { name, stage }.
   const [unlocking, setUnlocking] = useState(null);
+  // lib/exportableText.js once loaded (see textCheckPromise); null until then.
+  const [textCheck, setTextCheck] = useState(null);
   const passwordRequestIdRef = useRef(0);
 
   // Track the most recent open/close so a slow load can't clobber a newer one.
@@ -532,6 +541,68 @@ export function DocumentProvider({ children }) {
     [watermark, pages.length]
   );
 
+  /** Load the character check (once); resolves the module, or null if it failed. */
+  const loadTextCheck = useCallback(() => {
+    textCheckPromise ??= import('../lib/exportableText.js');
+    return textCheckPromise.then(
+      (module) => {
+        setTextCheck(module);
+        return module;
+      },
+      (err) => {
+        textCheckPromise = null; // try again next time
+        // eslint-disable-next-line no-console
+        console.error('Couldn’t load the character check', err);
+        return null;
+      }
+    );
+  }, []);
+
+  useEffect(() => {
+    if (sources.length) loadTextCheck();
+  }, [sources.length, loadTextCheck]);
+
+  /**
+   * Text that exporting the pages at 1-based `positions` would bake but the
+   * standard fonts can't write (it comes out as "?"): { pages, chars }.
+   * Covers text annotations and stamps, the text watermark and page numbers.
+   * `check` is the loaded lib/exportableText.js; nothing is reported without it.
+   */
+  const missingCharsFor = useCallback(
+    (positions, check = textCheck) => {
+      if (!check) return { pages: [], chars: [] };
+      const mark = watermark && { ...DEFAULT_WATERMARK, ...watermark };
+      const numberFont = { ...DEFAULT_NUMBERING, ...numbering }.font;
+      const items = positions.flatMap((n) => {
+        const entry = pages[n - 1];
+        if (!entry) return [];
+        const texts = getAnnotations(entry)
+          .filter((a) => a.type === 'text' && a.text)
+          .map((a) => ({ page: n, text: a.text, font: a.font }));
+        if (mark && mark.type !== 'image' && watermarkApplies?.[n - 1]) {
+          texts.push({ page: n, text: mark.text, font: mark.font });
+        }
+        const label = numberLabels?.[n - 1];
+        if (label) texts.push({ page: n, text: label, font: numberFont });
+        return texts;
+      });
+      return check.findMissingChars(items);
+    },
+    [pages, watermark, watermarkApplies, numbering, numberLabels, textCheck]
+  );
+
+  /** The warning before exporting `positions`, or null ("where" names the output). */
+  const missingCharsNote = useCallback(
+    (positions, where) => textCheck?.missingCharsWarning(missingCharsFor(positions), where) ?? null,
+    [textCheck, missingCharsFor]
+  );
+
+  /** The warning while typing `text` in `font`, or null. */
+  const typingWarning = useCallback(
+    (text, font) => textCheck?.unexportableMessage(textCheck.unexportableChars(text, font)) ?? null,
+    [textCheck]
+  );
+
   /**
    * Bake the pages at 1-based `positions` into new PDF bytes, reading only
    * the source files they use. Page numbers keep their position in the
@@ -900,6 +971,11 @@ export function DocumentProvider({ children }) {
       setWatermark,
       redactedPages,
       hadPassword,
+      missingCharsFor,
+      missingCharsNote,
+      typingWarning,
+      loadTextCheck,
+      textCheck,
       passwordRequest,
       unlocking,
       dismissNotice,
@@ -972,6 +1048,11 @@ export function DocumentProvider({ children }) {
       setWatermark,
       redactedPages,
       hadPassword,
+      missingCharsFor,
+      missingCharsNote,
+      typingWarning,
+      loadTextCheck,
+      textCheck,
       passwordRequest,
       unlocking,
       dismissNotice,

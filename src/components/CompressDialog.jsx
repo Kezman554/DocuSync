@@ -21,7 +21,9 @@ import './CompressDialog.css';
  * didn't help), then choose whether to download the result.
  */
 function CompressDialog({ onClose, onProtect }) {
-  const { compressDocument, redactedPages, hadPassword } = useDocumentContext();
+  const { compressDocument, redactedPages, hadPassword, missingCharsNote, numPages } =
+    useDocumentContext();
+  const missingNote = missingCharsNote(Array.from({ length: numPages }, (_, i) => i + 1));
   const [preset, setPreset] = useState(DEFAULT_PRESET);
   const [stripMetadata, setStripMetadata] = useState(true);
   const [state, setState] = useState('setup'); // setup | working | done
@@ -173,6 +175,11 @@ function CompressDialog({ onClose, onProtect }) {
       </div>
       {protect && (
         <PasswordFields value={protection} onChange={setProtection} disabled={working} />
+      )}
+      {missingNote && (
+        <p className="confirm-dialog__warning" role="note">
+          {missingNote}
+        </p>
       )}
       {hadPassword && !protect && !working && <ProtectOffer onProtect={onProtect} />}
       {redactedPages.length > 0 && (

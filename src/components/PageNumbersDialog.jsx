@@ -11,6 +11,7 @@ import { STANDARD_FONTS } from '../lib/textLayout.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import './PageNumbersDialog.css';
 
+
 const SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 24];
 const POSITION_LABELS = {
   'top-left': 'Top left',
@@ -27,7 +28,7 @@ const POSITION_LABELS = {
  * they stay right through reordering, deleting and merging.
  */
 function PageNumbersDialog({ onClose }) {
-  const { numbering, setNumbering, numPages } = useDocumentContext();
+  const { numbering, setNumbering, numPages, typingWarning } = useDocumentContext();
   const ids = { format: useId(), start: useId(), font: useId(), size: useId(), skip: useId() };
   const [draft, setDraft] = useState(() => ({ ...DEFAULT_NUMBERING, ...numbering }));
   const set = (patch) => setDraft((prev) => ({ ...prev, ...patch }));
@@ -35,6 +36,9 @@ function PageNumbersDialog({ onClose }) {
   const startValid = Number.isInteger(draft.start) && draft.start >= 0 && draft.start <= 99999;
   const labels = startValid ? pageNumberLabels(numPages, draft) : [];
   const firstShown = labels.find(Boolean);
+  // Every format exports in every font today; this keeps it that way if one
+  // is added that doesn't.
+  const missing = typingWarning(labels.filter(Boolean).join(' '), draft.font);
   const total = draft.start + numPages - 1;
 
   const apply = () => {
@@ -152,6 +156,9 @@ function PageNumbersDialog({ onClose }) {
           Don’t number the first page (cover)
         </label>
 
+        <p className="confirm-dialog__hint confirm-dialog__hint--warn" role="status">
+          {missing}
+        </p>
         <p className="confirm-dialog__hint" aria-live="polite">
           {startValid
             ? `${POSITION_LABELS[draft.position]}: “${firstShown ?? '—'}”${

@@ -123,6 +123,22 @@
   color: #f2a0a0;
 }
 
+/* Heads-up that doesn't block (e.g. characters that won't export). */
+.confirm-dialog__hint--warn {
+  color: #f0c95a;
+}
+
+.confirm-dialog__hint--warn:empty {
+  /* Empty: no space taken, but kept in the accessibility tree so it's
+     announced when text arrives (display: none would stop that). */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 /* A consequence the user must know before confirming (e.g. redaction). */
 .confirm-dialog__warning {
   margin: 0.6rem 0 0;

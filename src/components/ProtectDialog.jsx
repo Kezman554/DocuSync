@@ -16,7 +16,8 @@ const STAGE_LABELS = {
  * dialog and are gone when it closes.
  */
 function ProtectDialog({ onClose }) {
-  const { exportProtected, redactedPages } = useDocumentContext();
+  const { exportProtected, redactedPages, missingCharsNote, numPages } = useDocumentContext();
+  const missingNote = missingCharsNote(Array.from({ length: numPages }, (_, i) => i + 1));
   const [protection, setProtection] = useState(DEFAULT_PROTECTION);
   const [stage, setStage] = useState(null); // null | 'building' | 'loading' | 'working'
   const working = stage !== null;
@@ -45,6 +46,11 @@ function ProtectDialog({ onClose }) {
       {redactedPages.length > 0 && (
         <p className="confirm-dialog__warning" role="note">
           {redactionWarning(redactedPages.length)}
+        </p>
+      )}
+      {missingNote && (
+        <p className="confirm-dialog__warning" role="note">
+          {missingNote}
         </p>
       )}
       <span className="password-fields__status" role="status" aria-live="polite">

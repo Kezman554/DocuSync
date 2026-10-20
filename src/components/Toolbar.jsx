@@ -24,6 +24,11 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
     exportDocument,
     redactedPages,
     hadPassword,
+    missingCharsFor,
+    missingCharsNote,
+    loadTextCheck,
+    textCheck,
+    numPages,
     requestImagesToPdf,
     dismissNotice,
   } = useDocumentContext();
@@ -33,8 +38,20 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
   const [extractOpen, setExtractOpen] = useState(false);
   const [imagesOpen, setImagesOpen] = useState(false);
   const [compressOpen, setCompressOpen] = useState(false);
-  // Plain Export PDF asks first if pages are redacted or a source had a password.
+  // Plain Export PDF asks first if pages are redacted, a source had a
+  // password, or some added text won't come out.
   const [exportConfirm, setExportConfirm] = useState(false);
+  const allPages = Array.from({ length: numPages }, (_, i) => i + 1);
+  const missingNote = hasDocument ? missingCharsNote(allPages) : null;
+
+  // Wait for the character check if it's somehow still loading, so the
+  // warning can't be skipped by exporting the moment a file opens.
+  const handleExport = async () => {
+    const check = textCheck ?? (await loadTextCheck());
+    const missing = check?.missingCharsWarning(missingCharsFor(allPages, check));
+    if (redactedPages.length || hadPassword || missing) setExportConfirm(true);
+    else exportDocument();
+  };
   const [protectOpen, setProtectOpen] = useState(false);
   // "Export with password…" offered from another dialog: swap to it.
   const openProtect = () => {
@@ -100,9 +117,7 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
             className="toolbar__btn"
             // Say so before exporting if redacted pages become images, or
             // if the original had a password this export won't have.
-            onClick={() =>
-              redactedPages.length || hadPassword ? setExportConfirm(true) : exportDocument()
-            }
+            onClick={handleExport}
             disabled={exporting}
             aria-busy={exporting}
             title="Download a new PDF with your page edits applied"
@@ -235,9 +250,17 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
       {protectOpen && hasDocument && <ProtectDialog onClose={() => setProtectOpen(false)} />}
       {exportConfirm && hasDocument && (
         <ConfirmDialog
-          title={redactedPages.length ? 'Export with redactions?' : 'Export without a password?'}
+          title={
+            redactedPages.length
+              ? 'Export with redactions?'
+              : missingNote
+                ? 'Some characters won’t export'
+                : 'Export without a password?'
+          }
           message={
-            redactedPages.length ? redactionWarning(redactedPages.length) : UNPROTECTED_SENTENCE
+            redactedPages.length
+              ? redactionWarning(redactedPages.length)
+              : missingNote ?? UNPROTECTED_SENTENCE
           }
           confirmLabel="Export PDF"
           onConfirm={() => {
@@ -246,9 +269,14 @@ function Toolbar({ onToggleSidebar, stampsOpen = false, onToggleStamps }) {
           }}
           onCancel={() => setExportConfirm(false)}
         >
+          {redactedPages.length > 0 && missingNote && (
+            <p className="confirm-dialog__warning" role="note">
+              {missingNote}
+            </p>
+          )}
           {hadPassword && (
             <ProtectOffer
-              sentence={redactedPages.length > 0}
+              sentence={redactedPages.length > 0 || Boolean(missingNote)}
               onProtect={() => {
                 setExportConfirm(false);
                 openProtect();

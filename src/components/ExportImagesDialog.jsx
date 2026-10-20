@@ -10,7 +10,7 @@ import ConfirmDialog from './ConfirmDialog.jsx';
  * sidebar selection (or the current page).
  */
 function ExportImagesDialog({ onClose }) {
-  const { pages, selected, currentPage, exportImages } = useDocumentContext();
+  const { pages, selected, currentPage, exportImages, missingCharsNote } = useDocumentContext();
   const ids = { pages: useId(), hint: useId(), dpi: useId() };
   const [value, setValue] = useState(() => {
     const positions = pages.flatMap((p, i) => (selected.has(p.id) ? [i + 1] : []));
@@ -22,6 +22,8 @@ function ExportImagesDialog({ onClose }) {
   const result = parsePageRanges(value, pages.length);
   const count = result.pages?.length ?? 0;
   const { label } = IMAGE_FORMATS[format];
+  const missingNote =
+    result.pages && missingCharsNote(result.pages, 'the exported images');
   const summary =
     count === 1
       ? `1 page → one ${label} image`
@@ -109,6 +111,11 @@ function ExportImagesDialog({ onClose }) {
           ))}
         </select>
       </div>
+      {missingNote && (
+        <p className="confirm-dialog__warning" role="note">
+          {missingNote}
+        </p>
+      )}
     </ConfirmDialog>
   );
 }

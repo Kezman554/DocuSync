@@ -12,8 +12,15 @@ const SIZE_PRESETS = [8, 10, 12, 14, 16, 18, 24, 32, 48, 72];
  * Uses the PDF standard fonts so the export needs no embedded font files.
  */
 function TextFormatBar() {
-  const { tool, pages, selectedAnnotationId, textStyle, setTextStyle, updateTextAnnotation } =
-    useDocumentContext();
+  const {
+    tool,
+    pages,
+    selectedAnnotationId,
+    textStyle,
+    setTextStyle,
+    updateTextAnnotation,
+    typingWarning,
+  } = useDocumentContext();
   const ids = { font: useId(), size: useId(), color: useId(), sizes: useId() };
   // What's typed in the size box, so partial input ("", "2" on the way to
   // "24") isn't fought by the controlled value. Valid sizes apply instantly.
@@ -28,6 +35,9 @@ function TextFormatBar() {
   const style = target
     ? { font: target.font, fontSize: target.fontSize, color: target.color }
     : textStyle;
+
+  // The preview uses browser fonts; say now if export can't write something.
+  const warning = target && typingWarning(target.text, target.font);
 
   const apply = (patch) => {
     setTextStyle((prev) => ({ ...prev, ...patch }));
@@ -93,6 +103,10 @@ function TextFormatBar() {
         value={style.color}
         onChange={(event) => apply({ color: event.target.value })}
       />
+
+      <p className="text-format__warning" role="status">
+        {warning}
+      </p>
     </div>
   );
 }

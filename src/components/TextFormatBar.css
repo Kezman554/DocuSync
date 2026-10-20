@@ -46,3 +46,23 @@
   outline: 2px solid #8ab4ff;
   outline-offset: 1px;
 }
+
+/* Characters the export can't write (see the :empty rule below). */
+.text-format__warning {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #f0c95a;
+}
+
+.text-format__warning:empty {
+  /* Empty: no space taken, but kept in the accessibility tree so it's
+     announced when text arrives (display: none would stop that). */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

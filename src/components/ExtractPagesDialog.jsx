@@ -18,8 +18,15 @@ const STAGE_LABELS = {
  * protects just those pages, encrypting as the last step.
  */
 function ExtractPagesDialog({ onClose }) {
-  const { pages, selected, currentPage, extractPages, redactedPages, hadPassword } =
-    useDocumentContext();
+  const {
+    pages,
+    selected,
+    currentPage,
+    extractPages,
+    redactedPages,
+    hadPassword,
+    missingCharsNote,
+  } = useDocumentContext();
   const inputId = useId();
   const hintId = useId();
 
@@ -36,6 +43,7 @@ function ExtractPagesDialog({ onClose }) {
   const count = result.pages?.length ?? 0;
   const redactedCount = result.pages?.filter((n) => redactedPages.includes(n)).length ?? 0;
   const protectionInvalid = protect && Boolean(protectionError(protection));
+  const missingNote = result.pages && missingCharsNote(result.pages);
 
   const submit = async () => {
     if (!result.pages || protectionInvalid || working) return;
@@ -114,6 +122,11 @@ function ExtractPagesDialog({ onClose }) {
       {redactedCount > 0 && (
         <p className="confirm-dialog__warning" role="note">
           {redactionWarning(redactedCount)}
+        </p>
+      )}
+      {missingNote && (
+        <p className="confirm-dialog__warning" role="note">
+          {missingNote}
         </p>
       )}
       {hadPassword && !protect && <ProtectOffer />}

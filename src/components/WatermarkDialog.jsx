@@ -15,9 +15,10 @@ const SIZES = ['auto', 24, 36, 48, 72, 96, 144];
  * pages. Applied to every export, previewed on the page.
  */
 function WatermarkDialog({ onClose }) {
-  const { watermark, setWatermark, numPages } = useDocumentContext();
+  const { watermark, setWatermark, numPages, typingWarning } = useDocumentContext();
   const ids = {
     text: useId(),
+    textWarning: useId(),
     font: useId(),
     size: useId(),
     colour: useId(),
@@ -99,8 +100,16 @@ function WatermarkDialog({ onClose }) {
                 value={draft.text}
                 maxLength={60}
                 onChange={(event) => set({ text: event.target.value })}
+                aria-describedby={ids.textWarning}
               />
             </label>
+            <span
+              id={ids.textWarning}
+              className="confirm-dialog__hint confirm-dialog__hint--warn watermark__wide"
+              role="status"
+            >
+              {typingWarning(draft.text, draft.font)}
+            </span>
             <label className="confirm-dialog__label" htmlFor={ids.font}>
               Font
               <select
