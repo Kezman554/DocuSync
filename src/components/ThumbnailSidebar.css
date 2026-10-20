@@ -63,6 +63,25 @@
   opacity: 0.4;
 }
 
+/* Picked up by a touch long press: lifted off the list under the finger. */
+.sidebar__thumb--lifted {
+  opacity: 1;
+  transform: scale(1.06);
+  background: #2b2d32;
+  border-color: #3a82f6;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  position: relative;
+  z-index: 1;
+}
+
+/* Long press is a gesture here: no text selection or "save image" callout. */
+.sidebar__thumb {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* Drop indicator: a line in the gap above (or, for the last item, below). */
 .sidebar__item {
   position: relative;

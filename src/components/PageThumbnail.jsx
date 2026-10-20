@@ -19,6 +19,7 @@ function PageThumbnail({
   active,
   selected,
   dragging = false,
+  lifted = false, // picked up by a touch long press
   onSelect,
   root,
   ...dragProps // draggable / onDragStart / onDragEnd from the sidebar
@@ -85,7 +86,7 @@ function PageThumbnail({
       type="button"
       className={`sidebar__thumb${active ? ' sidebar__thumb--active' : ''}${
         selected ? ' sidebar__thumb--selected' : ''
-      }${dragging ? ' sidebar__thumb--dragging' : ''}`}
+      }${dragging ? ' sidebar__thumb--dragging' : ''}${lifted ? ' sidebar__thumb--lifted' : ''}`}
       onClick={onSelect}
       aria-current={active ? 'page' : undefined}
       aria-pressed={selected}

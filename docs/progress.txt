@@ -769,3 +769,42 @@ DocuSync — Progress Log
   tests, tests/sharedFieldsUi.test.jsx (2). Each new test fails when the
   piece it covers is disabled (no upward pruning / no renumbering / /V
   looked up by name).
+
+2026-10-20 — Touch reordering in the thumbnail sidebar
+- Mobile browsers don't fire HTML5 drag events from touch, so pages couldn't
+  be reordered on a phone. ThumbnailSidebar.jsx now also handles Pointer
+  Events with pointerType 'touch' (mouse/pen still use the HTML5 drag;
+  keyboard unchanged). Geometry and timing in lib/touchReorder.js.
+- Hold ~400 ms without moving (8 px tolerance) to pick a thumbnail up:
+  lifted look (scaled, shadow, blue border) and navigator.vibrate(30) where
+  it exists. Moving earlier is a scroll and the browser keeps it. Once
+  lifted, a non-passive touchmove listener on the scroll container blocks
+  scrolling (React's touch listeners are passive), so the browser never
+  starts a pan or cancels the pointer.
+- While dragging: the mouse drag's insertion indicator (same midpoint rule)
+  and the same movePages path; dragging a selected page moves the
+  selection, an unselected one only itself (shared idsToDrag). The click
+  after a touch release is swallowed so it can't collapse the selection.
+  Near the scroll container's top/bottom 56 px, auto-scroll up to 14 px a
+  frame (proportional). Leaving the sidebar or pointercancel cancels with no
+  change. A long press can't open the browser's context menu or start a
+  second (HTML5) drag; thumbs have no text-select / touch callout.
+- Verified in headless Edge emulating a 390 × 844 touch phone against the
+  dev server: quick swipe scrolled 225 px with no reorder; long press
+  lifted, indicator shown, drop reordered with no pointercancel; holding at
+  the bottom edge auto-scrolled the 12-page list (~720 px/s — may feel slow
+  on long documents; MAX_SCROLL_PX is the knob).
+- Layout at 390 px, noted, NOT changed this session:
+  - The toolbar's ten buttons wrap into six rows: 246 px of an 844 px
+    screen (~29%).
+  - The floating page-controls panel sits above the open sidebar drawer and
+    hides its bottom ~180 px — including the bottom auto-scroll zone and the
+    drop indicator there (the drag still works; it just can't be seen).
+  - At 100% the page (612 pt) is wider than the screen and opens cropped.
+  The sidebar itself is usable: a 200 px drawer from ☰.
+- Tests: 417 passing (+5 tests/touchReorder.test.js geometry; +11
+  tests/touchReorderUi.test.jsx driving pointer events with fake timers:
+  long press → move → release reorders; short press + move doesn't;
+  touchmove blocked only once lifted; selection vs single page; cancel by
+  pointercancel and by leaving the sidebar; auto-scroll down and up; mouse
+  and pen ignored; context menu suppressed during a press).
