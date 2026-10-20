@@ -1064,3 +1064,25 @@ DocuSync — Progress Log
   table): 0.28 read too pale once multiplied. White paper under a highlight
   now renders about rgb(255, 236, 140); the render tests expect that colour
   (±6 per channel), computed from HIGHLIGHT, and glyphs under it stay dark.
+
+2026-10-20 — Empty state: a lit well and a feature strip
+- With no document open, the well behind the card has a dot grid (masked
+  to fade at the edges), window light from the top left and two A4 paper
+  outlines fanned behind the card (-11°/+8°, 50 px under it). All
+  aria-hidden, pointer-events: none. The card gets the shadow token.
+- Feature strip 28 px under the card: six information tiles (a <ul>, no
+  hover/cursor/focus). Six per row up to 1090 px; three when the viewer
+  is under 900 px (container query); two on the phone, where the empty
+  state scrolls inside the well and the sheets are hidden.
+- Tile wording checked against the code: all six lines are true as given
+  (AES-256 in lib/protect.js, Extract = split, watermark defaults to all
+  pages), so none changed.
+- Tokens: well-dot, well-light, sheet-edge, sheet-fill, sheet-rule (both
+  modes, decorative) and radius-sheet 6px. DESIGN.md Layout bullet and
+  token table updated.
+- Tests: 508 (+2 tests/emptyState.test.jsx: strip and layers render only
+  with no document). lint:styles, check:literals, check:contrast pass.
+- Checked in headless Edge on the production build: 1280 and 390 px, light
+  and dark (6/row at 1280, 3/row at 800, 2/row at 390, last tile reachable
+  by scrolling, no horizontal scroll); a PDF dropped on a fanned sheet and
+  on the dots opens in both modes, and none of the layers remain after.

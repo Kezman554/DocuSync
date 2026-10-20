@@ -11,6 +11,9 @@
 .viewer__empty {
   flex: 1;
   min-height: 0;
+  /* The empty state's background layers stop at the well's edge. */
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -16,6 +16,7 @@
   --radius-pill: 999px; /* half the height, whatever the height */
   --radius-tile: 14px; /* tiles, inputs and callouts inside panels */
   --radius-paper: 4px; /* the page, thumbnails and marks on them: reads as paper */
+  --radius-sheet: 6px; /* the outline sheets behind the empty state */
 
   /* Content, not chrome: the page and what's on it look the same in both
      modes (DESIGN.md › What colour means). */
@@ -74,6 +75,12 @@
   --on-danger-on-page: #ffffff;
   --scrim: rgba(19, 32, 27, 0.42);
   --shadow: rgba(19, 40, 32, 0.16);
+  /* Decorative, behind the empty state; they carry no text. */
+  --well-dot: rgba(19, 32, 27, 0.18);
+  --well-light: rgba(255, 255, 255, 0.65);
+  --sheet-edge: rgba(19, 32, 27, 0.16);
+  --sheet-fill: rgba(255, 255, 255, 0.32);
+  --sheet-rule: rgba(19, 32, 27, 0.08);
 }
 
 :root[data-theme='dark'] {
@@ -99,4 +106,10 @@
   --on-danger-on-page: #ffffff;
   --scrim: rgba(4, 10, 8, 0.62);
   --shadow: rgba(2, 10, 7, 0.6);
+  /* Decorative, behind the empty state; they carry no text. */
+  --well-dot: rgba(227, 235, 231, 0.14);
+  --well-light: rgba(92, 199, 166, 0.12);
+  --sheet-edge: rgba(227, 235, 231, 0.12);
+  --sheet-fill: rgba(255, 255, 255, 0.025);
+  --sheet-rule: rgba(227, 235, 231, 0.07);
 }

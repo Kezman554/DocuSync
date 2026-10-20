@@ -19,7 +19,7 @@ A private document tool that says so: calm green-grey panels around a white page
 - **Nothing floats over the page.** The text format bar and the page-controls panel are both replaced by the inspector.
 - **Phone (under 640 px):** the inspector becomes a bottom sheet. Lowered, it shows a one-line summary plus page navigation and zoom. Raised, it is at most 50% of the screen's height, its sections scroll inside it, the navigation and zoom row hides until it's lowered, and the page scrolls so the selected annotation stays in view above it (at least 300 px of page shows on a 390×844 screen). Thumbnails stay in the ☰ drawer, with long-press drag. The tool row spans the screen. The light/dark switch moves into File ▾. Controls are at least 44 px.
 - **Notices:** a strip across the top of the workspace, directly under the header, with a × to dismiss. It pushes the tool row, thumbnails, inspector and sheet down while it's visible and never covers anything; on a phone it wraps onto as many lines as it needs. Errors keep the danger edge; information is a neutral outlined note in the text colour. The kind comes from what happened, not the wording.
-- **No document open:** no thumbnail column, and no ☰ drawer toggle on the phone. The tool row stays, so Stamps works before a PDF is open.
+- **No document open:** no thumbnail column, and no ☰ drawer toggle on the phone. The tool row stays, so Stamps works before a PDF is open. The well behind the open-a-PDF card is lit, not empty. A dot grid (1.2 px dots on a 22 px pitch, centred) fades out towards the edges. Soft window light comes from the top left. Two A4 paper outlines (300 × 424 px, 6 px corners, ruled lines, never real content) fan out behind the card at −11° and +8°, each tucked 50 px under it. The card carries the `shadow`. All of that is `aria-hidden` and lets a dropped file through to the drop zone. 28 px under the card is a feature strip: six tiles (Pages, Sign and stamp, Redact, Password, Number and watermark, Images and PDF), each an accent icon, a bold title and a line of `text-secondary`. They are information, not controls: no hover, no pointer, not focusable. Six in a row (at most 1090 px) where they fit, otherwise three. On the phone they are two per row, the empty state scrolls inside the well so they can be reached, and the fanned sheets are hidden. The dots and the light stay at every width. None of it shows once a document is open.
 - **Opening a page, any width:** a page wider than the viewer at 100% opens fitted to the viewer's width, so its left edge is never cut off; zoom still goes back to 100%.
 
 ## Tokens
@@ -47,6 +47,13 @@ Typeface: Manrope, weights 400/500/600/700, bundled with `@fontsource` (never fe
 | accent-fill-hover | `#175546` | `#7DD4B9` |
 | danger-fill-hover | `#8A3024` | `#F7B3A8` |
 | on-danger (text on a danger fill) | `#FFFFFF` | `#3A0D07` |
+| well-dot (decorative: the dot grid behind the empty state) | `rgba(19,32,27,0.18)` | `rgba(227,235,231,0.14)` |
+| well-light (decorative: the window light in the empty well) | `rgba(255,255,255,0.65)` | `rgba(92,199,166,0.12)` |
+| sheet-edge (decorative: the fanned sheets' edge) | `rgba(19,32,27,0.16)` | `rgba(227,235,231,0.12)` |
+| sheet-fill (decorative: the fanned sheets' fill) | `rgba(255,255,255,0.32)` | `rgba(255,255,255,0.025)` |
+| sheet-rule (decorative: the fanned sheets' ruled lines) | `rgba(19,32,27,0.08)` | `rgba(227,235,231,0.07)` |
+
+The well-* and sheet-* roles are decorative only. They carry no text and are not measured, and the strip's text is `text` and `text-secondary` on `surface`, which are.
 
 These stay the same in both modes. They are content, or chrome that sits on the white page:
 
@@ -65,7 +72,7 @@ These stay the same in both modes. They are content, or chrome that sits on the 
 | source-1 … source-6 (which file a page came from) | `#7FB0F8` `#E5A50A` `#2EC27E` `#F08A3C` `#D58CDC` `#F66151` | same |
 | on-source | `#13201B` | `#13201B` |
 
-Radii: 18 px panels, 24 px dialogs, pill (half the height) for buttons and chips, 14 px for tiles inside panels.
+Radii: 18 px panels, 24 px dialogs, pill (half the height) for buttons and chips, 14 px for tiles inside panels, 4 px for the page (`radius-paper`), 6 px for the empty state's fanned sheets (`radius-sheet`).
 
 ## Geometry: prohibitions
 - Never square corners on chrome. The page and thumbnails keep 4–6 px, so they read as paper.

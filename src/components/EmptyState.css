@@ -1,15 +1,107 @@
+/* Fills the well: background layers behind, the card and the strip on top. */
+.empty-well {
+  position: absolute;
+  inset: 0;
+}
+
+/* Background layers: decoration only, so a dropped file passes through. */
+.empty-well__dots,
+.empty-well__light,
+.empty-well__sheet {
+  pointer-events: none;
+}
+
+.empty-well__dots,
+.empty-well__light {
+  position: absolute;
+  inset: 0;
+}
+
+.empty-well__dots {
+  background-image: radial-gradient(circle, var(--well-dot) 1.2px, transparent 1.7px);
+  background-size: 22px 22px;
+  background-position: center;
+  /* Only alpha matters in a mask; currentColor is opaque. */
+  mask-image: radial-gradient(ellipse 40% 45% at center, currentColor 35%, transparent 100%);
+}
+
+/* Window light from the top left. */
+.empty-well__light {
+  background-image: radial-gradient(
+    ellipse 500px 380px at 14% -6%,
+    var(--well-light),
+    transparent 70%
+  );
+}
+
+.empty-well__scroll {
+  position: absolute;
+  inset: 0;
+  overflow: hidden auto;
+  display: flex;
+}
+
+/* Auto margins centre it, and let it start at the top when it overflows. */
+.empty-well__content {
+  margin: auto;
+  width: 100%;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.empty-well__stack {
+  position: relative;
+  width: min(440px, 100%);
+}
+
+/* Two A4 outlines fanned behind the card, each tucked 50 px under it. Paper, never content. */
+.empty-well__sheet {
+  position: absolute;
+  top: 50%;
+  width: 300px;
+  height: 424px;
+  margin-top: -212px;
+  border: 1.5px solid var(--sheet-edge);
+  border-radius: var(--radius-sheet);
+  background-color: var(--sheet-fill);
+}
+
+.empty-well__sheet::before {
+  content: '';
+  position: absolute;
+  inset: 40px 56px;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--sheet-rule) 0 3px,
+    transparent 3px 19px
+  );
+}
+
+.empty-well__sheet--left {
+  right: calc(100% - 50px);
+  transform: rotate(-11deg);
+}
+
+.empty-well__sheet--right {
+  left: calc(100% - 50px);
+  transform: rotate(8deg);
+}
+
 /* Centred in the well: a panel with a dashed outline edge. */
 .empty-state {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   gap: 0.75rem;
-  width: min(440px, calc(100% - 2rem));
   padding: 2.25rem 2rem;
   border: 2px dashed var(--outline);
   border-radius: var(--radius-panel);
   background: var(--surface);
+  box-shadow: 0 12px 32px var(--shadow);
 }
 
 .empty-state__icon {
@@ -74,4 +166,66 @@
 
 .empty-state__file-input {
   display: none;
+}
+
+/* What the app does: information, not buttons (no hover, no focus). */
+.feature-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  width: min(1090px, 100%);
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feature-strip__tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-tile);
+  background: var(--surface);
+}
+
+.feature-strip__icon {
+  width: 20px;
+  height: 20px;
+  margin-bottom: 0.15rem;
+  color: var(--accent);
+}
+
+.feature-strip__title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text);
+}
+
+.feature-strip__text {
+  margin: 0;
+  font-size: 0.78125rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+/* Where six don't fit: three per row. */
+@container viewer (max-width: 899px) {
+  .feature-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: min(720px, 100%);
+  }
+}
+
+/* Phone: two per row, the well scrolls to reach them, no fanned sheets. */
+@media (max-width: 639px) {
+  .feature-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .empty-well__sheet {
+    display: none;
+  }
 }
