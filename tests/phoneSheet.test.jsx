@@ -86,6 +86,18 @@ describe('phone bottom sheet', () => {
     expect(sheet()).not.toHaveClass('inspector--raised');
   });
 
+  it('hides page navigation and zoom while raised, and brings them back when lowered', async () => {
+    const user = userEvent.setup();
+    await openPdf(App, user);
+    expect(within(sheet()).getByRole('button', { name: 'Zoom in' })).toBeInTheDocument();
+    await user.click(summary());
+    for (const name of ['Previous page', 'Next page', 'Zoom out', 'Zoom in']) {
+      expect(within(sheet()).queryByRole('button', { name })).toBeNull();
+    }
+    await user.click(summary());
+    expect(within(sheet()).getByRole('button', { name: 'Zoom in' })).toBeInTheDocument();
+  });
+
   it('raises when the handle is dragged up, lowers when dragged down, toggles on a tap', async () => {
     const user = userEvent.setup();
     await openPdf(App, user);

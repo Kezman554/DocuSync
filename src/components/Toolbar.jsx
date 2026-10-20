@@ -23,7 +23,6 @@ function Toolbar({ onToggleSidebar }) {
     adding,
     exporting,
     progress,
-    notice,
     exportDocument,
     redactedPages,
     hadPassword,
@@ -33,7 +32,6 @@ function Toolbar({ onToggleSidebar }) {
     textCheck,
     numPages,
     requestImagesToPdf,
-    dismissNotice,
   } = useDocumentContext();
   const inputRef = useRef(null);
   const addInputRef = useRef(null);
@@ -299,20 +297,6 @@ function Toolbar({ onToggleSidebar }) {
             />
           )}
         </ConfirmDialog>
-      )}
-
-      {notice && (
-        <div className="toolbar__alert" role="alert">
-          <span>{notice}</span>
-          <button
-            type="button"
-            className="toolbar__icon-btn"
-            onClick={dismissNotice}
-            aria-label="Dismiss"
-          >
-            ×
-          </button>
-        </div>
       )}
     </header>
   );

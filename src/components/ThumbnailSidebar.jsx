@@ -237,86 +237,85 @@ function ThumbnailSidebar({ open, collapsed = false }) {
         )
       : null;
 
+  // No document, no column (DESIGN.md › Layout).
+  if (!hasDocument) return null;
+
   return (
     <aside
       ref={asideRef}
       className={`sidebar${open ? ' sidebar--open' : ''}${collapsed ? ' sidebar--collapsed' : ''}`}
       aria-label="Page thumbnails"
     >
-      {hasDocument ? (
-        <div className="sidebar__scroll" ref={setScrollEl}>
-          <ol
-            ref={listRef}
-            className={`sidebar__list${liftedId ? ' sidebar__list--touch-dragging' : ''}`}
-            onKeyDown={handleKeyDown}
-            // Drops in the gaps between items keep the last indicator position.
-            onDragOver={(event) => {
-              if (dragIds) event.preventDefault();
-            }}
-            onDrop={handleDrop}
-            aria-describedby="sidebar-reorder-hint"
-          >
-            {pages.map((entry, index) => {
-              const dropBefore = dropIndex === index;
-              const dropAfter =
-                index === pages.length - 1 && dropIndex === pages.length;
-              return (
-                <li
-                  key={entry.id}
-                  className={`sidebar__item${
-                    dropBefore ? ' sidebar__item--drop-before' : ''
-                  }${dropAfter ? ' sidebar__item--drop-after' : ''}`}
-                  onDragOver={(event) => handleDragOver(event, index)}
-                  onDrop={handleDrop}
-                  // Touch pointers are captured by the element first touched,
-                  // so moves and the release come back here wherever the
-                  // finger goes.
-                  onPointerDown={(event) => handlePointerDown(event, entry)}
-                  onPointerMove={handlePointerMove}
-                  onPointerUp={handlePointerUp}
-                  onPointerCancel={clearTouch}
-                  onContextMenu={(event) => {
-                    // A long press would also open the browser's menu.
-                    if (touchRef.current) event.preventDefault();
+      <div className="sidebar__scroll" ref={setScrollEl}>
+        <ol
+          ref={listRef}
+          className={`sidebar__list${liftedId ? ' sidebar__list--touch-dragging' : ''}`}
+          onKeyDown={handleKeyDown}
+          // Drops in the gaps between items keep the last indicator position.
+          onDragOver={(event) => {
+            if (dragIds) event.preventDefault();
+          }}
+          onDrop={handleDrop}
+          aria-describedby="sidebar-reorder-hint"
+        >
+          {pages.map((entry, index) => {
+            const dropBefore = dropIndex === index;
+            const dropAfter =
+              index === pages.length - 1 && dropIndex === pages.length;
+            return (
+              <li
+                key={entry.id}
+                className={`sidebar__item${
+                  dropBefore ? ' sidebar__item--drop-before' : ''
+                }${dropAfter ? ' sidebar__item--drop-after' : ''}`}
+                onDragOver={(event) => handleDragOver(event, index)}
+                onDrop={handleDrop}
+                // Touch pointers are captured by the element first touched,
+                // so moves and the release come back here wherever the
+                // finger goes.
+                onPointerDown={(event) => handlePointerDown(event, entry)}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={clearTouch}
+                onContextMenu={(event) => {
+                  // A long press would also open the browser's menu.
+                  if (touchRef.current) event.preventDefault();
+                }}
+              >
+                <PageThumbnail
+                  pdfDoc={sourcesById[entry.sourceId]?.pdfDoc}
+                  source={sourceInfo?.[entry.sourceId]}
+                  sourcePage={entry.sourcePage}
+                  rotation={entry.rotation}
+                  label={index + 1}
+                  redacted={isRedacted(entry)}
+                  active={index + 1 === currentPage}
+                  selected={selected.has(entry.id)}
+                  dragging={dragging?.has(entry.id) ?? false}
+                  lifted={liftedId === entry.id}
+                  onSelect={(event) => {
+                    if (suppressClickRef.current) {
+                      suppressClickRef.current = false;
+                      return;
+                    }
+                    selectPage(entry.id, {
+                      toggle: event.ctrlKey || event.metaKey,
+                      range: event.shiftKey,
+                    });
                   }}
-                >
-                  <PageThumbnail
-                    pdfDoc={sourcesById[entry.sourceId]?.pdfDoc}
-                    source={sourceInfo?.[entry.sourceId]}
-                    sourcePage={entry.sourcePage}
-                    rotation={entry.rotation}
-                    label={index + 1}
-                    redacted={isRedacted(entry)}
-                    active={index + 1 === currentPage}
-                    selected={selected.has(entry.id)}
-                    dragging={dragging?.has(entry.id) ?? false}
-                    lifted={liftedId === entry.id}
-                    onSelect={(event) => {
-                      if (suppressClickRef.current) {
-                        suppressClickRef.current = false;
-                        return;
-                      }
-                      selectPage(entry.id, {
-                        toggle: event.ctrlKey || event.metaKey,
-                        range: event.shiftKey,
-                      });
-                    }}
-                    draggable
-                    onDragStart={(event) => handleDragStart(event, entry)}
-                    onDragEnd={endDrag}
-                    root={scrollEl}
-                  />
-                </li>
-              );
-            })}
-          </ol>
-          <p id="sidebar-reorder-hint" className="sidebar__hint">
-            Drag (or touch and hold) to reorder · Alt+↑/↓ to move · Del to delete
-          </p>
-        </div>
-      ) : (
-        <p className="sidebar__empty">No document open</p>
-      )}
+                  draggable
+                  onDragStart={(event) => handleDragStart(event, entry)}
+                  onDragEnd={endDrag}
+                  root={scrollEl}
+                />
+              </li>
+            );
+          })}
+        </ol>
+        <p id="sidebar-reorder-hint" className="sidebar__hint">
+          Drag (or touch and hold) to reorder · Alt+↑/↓ to move · Del to delete
+        </p>
+      </div>
     </aside>
   );
 }

@@ -108,17 +108,19 @@
 
 /* Phone: a bottom sheet (DESIGN.md › Layout, Phone). Lowered it shows the
    handle, the summary and page navigation with zoom; raised, the sections
-   scroll inside it. It stays below the thumbnail drawer and its scrim
-   (z-index 6 and 5), so nothing covers the drawer. */
+   scroll inside it, the sheet at most 50% of the screen's height. It sits
+   at the bottom of the workspace (below any notice strip) and under the
+   thumbnail drawer and its scrim (z-index 6 and 5), so nothing covers the
+   drawer. */
 @media (max-width: 639px) {
   .inspector--sheet {
-    position: fixed;
+    position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
     z-index: 4;
     width: auto;
-    max-height: 78vh;
+    max-height: 50vh;
     padding: 0 0.6rem 0.5rem;
     gap: 0;
     overflow: hidden;

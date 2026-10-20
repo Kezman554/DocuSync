@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DocumentProvider, useDocumentContext } from './hooks/DocumentContext.jsx';
 import { StampsProvider } from './hooks/StampsContext.jsx';
 import Toolbar from './components/Toolbar.jsx';
+import NoticeStrip from './components/NoticeStrip.jsx';
 import ThumbnailSidebar from './components/ThumbnailSidebar.jsx';
 import Viewer from './components/Viewer.jsx';
 import Inspector from './components/Inspector.jsx';
@@ -39,6 +40,7 @@ function App() {
       <StampsProvider>
         <div className="app">
           <Toolbar onToggleSidebar={toggleThumbnails} />
+          <NoticeStrip />
           <DropZone>
             <div className="app__body">
               <ThumbnailSidebar open={sidebarOpen} collapsed={thumbsCollapsed} />

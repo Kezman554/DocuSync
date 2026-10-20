@@ -18,9 +18,8 @@ describe('App layout', () => {
   it('renders the core layout regions', () => {
     render(<App />);
     expect(screen.getByRole('banner')).toBeInTheDocument(); // toolbar <header>
-    expect(
-      screen.getByRole('complementary', { name: /page thumbnails/i })
-    ).toBeInTheDocument(); // sidebar <aside>
+    // No document yet: no thumbnail column (it appears once a PDF opens).
+    expect(screen.queryByRole('complementary', { name: /page thumbnails/i })).toBeNull();
     expect(
       screen.getByRole('region', { name: /document viewer/i })
     ).toBeInTheDocument(); // viewer <section>

@@ -176,13 +176,6 @@
   font-size: 0.8rem;
 }
 
-.sidebar__empty {
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  text-align: center;
-  margin: 1rem 0.75rem;
-}
-
 /* On mobile the sidebar becomes an off-canvas drawer. */
 @media (max-width: 767px) {
   .sidebar {

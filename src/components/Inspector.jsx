@@ -37,8 +37,9 @@ function Section({ title, id, children }) {
  * also keeps the inspector open with no document, to manage stamps.
  *
  * Under 640 px it's a bottom sheet: lowered, a handle, a one-line summary
- * of its top section and page navigation with zoom; raised, the sections
- * too, scrolling inside it. Tap the summary or drag the handle to switch.
+ * of its top section and page navigation with zoom; raised (at most 50% of
+ * the screen's height), the handle, summary and sections, scrolling inside
+ * it. Tap the summary or drag the handle to switch.
  */
 function Inspector({ stampsOpen = false }) {
   const {
@@ -326,7 +327,8 @@ function Inspector({ stampsOpen = false }) {
         >
           {summary}
         </button>
-        {hasDocument && <PageNav className="inspector__nav" />}
+        {/* Raised, the sections need the room; navigation returns when lowered. */}
+        {hasDocument && !raised && <PageNav className="inspector__nav" />}
       </div>
       <div id={bodyId} className="inspector__sheet-body" hidden={!raised}>
         {sections}

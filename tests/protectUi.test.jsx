@@ -98,9 +98,15 @@ describe('unlock on open', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Unlock' }));
     await screen.findByText('Page 1 of 3');
     expect(screen.queryByRole('dialog', { name: 'Password needed' })).toBeNull();
-    expect(screen.getByRole('alert')).toHaveTextContent(
+    expect(screen.getByRole('status')).toHaveTextContent(
       '“locked.pdf” is unlocked for editing. Exports won’t have its password'
     );
+    // Information, not an error: a neutral outlined note, announced politely.
+    const strip = screen.getByRole('status');
+    expect(strip).toHaveClass('notice-strip');
+    expect(strip.querySelector('.notice-strip__item--info')).not.toBeNull();
+    expect(strip.querySelector('.notice-strip__item--error')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
 
     // pdf.js was handed the decrypted bytes, not the encrypted file.
     const [opened] = loadPdfDocument.mock.calls.at(-1);
@@ -157,7 +163,7 @@ describe('unlock on open', () => {
     const expectOpenedDecrypted = async () => {
       await screen.findByText('Page 1 of 3');
       expect(screen.queryByRole('dialog', { name: 'Restricted PDF' })).toBeNull();
-      expect(screen.getByRole('alert')).toHaveTextContent(RESTRICTIONS_NOTICE);
+      expect(screen.getByRole('status')).toHaveTextContent(RESTRICTIONS_NOTICE);
       const [opened] = loadPdfDocument.mock.calls.at(-1);
       expect(looksEncrypted(await bytesOf(opened))).toBe(false);
     };

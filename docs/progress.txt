@@ -1001,3 +1001,24 @@ DocuSync — Progress Log
   drag to the bottom edge auto-scrolled ~1480 px and reordered, and only the
   drawer is under its bottom 56 px; no control under 44×44 on any screen,
   menu or dialog checked. Desktop: 1024×768 opens at 81%, left edge in view.
+
+2026-10-20 — Sheet cap, notice strip, no-document layout
+- Raised sheet at most 50vh (55% asked; at 390×844 that left 267 px of page
+  above it, so Nick chose 50%): 310 px shows with a text box selected and
+  in view. The navigation/zoom row hides while raised. phone-check.mjs
+  measures the cap, the hidden row and the page shown (≥ 300 px).
+- Notices are [{ kind, text }] set where they're raised: load failures,
+  export/image/compress failures and a rejected image are 'error'; files
+  unlocked for editing are 'info'. NoticeStrip.jsx: in the flow under the
+  header (pushes the workspace down, covers nothing), role alert if any
+  error else status; error rows danger-edged, info rows outline-edged; one
+  × dismisses. The sheet is now absolute in the workspace, so the strip
+  pushes it too. The old floating .toolbar__alert is gone.
+- No document: ThumbnailSidebar renders nothing (no column, no ☰); the
+  tool row stays with Stamps.
+- Tests: 498 (+4: notice error strip and placement, no-document column,
+  sheet nav row hidden while raised; unlock notice now asserted as info).
+- Edge: strip info/error at 1280 and 390, light and dark — directly under
+  the header, workspace starts at its bottom, nothing covers it, wraps to
+  3–4 lines at 390, no horizontal scroll; no-document layout at both
+  widths; phone-check all green in both modes (cap 422 px, 310 px page).

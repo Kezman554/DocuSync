@@ -1,0 +1,74 @@
+/* In the flow under the header: the workspace below gets shorter. */
+.notice-strip {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
+  border-bottom: 1px solid var(--divider);
+  background: var(--surface);
+}
+
+.notice-strip__items {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.notice-strip__item {
+  margin: 0;
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--radius-tile);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+/* Something failed: the danger edge, and the wording says what. */
+.notice-strip__item--error {
+  border: 1px solid var(--danger);
+  border-left-width: 4px;
+}
+
+/* Something to know: a neutral outlined note. */
+.notice-strip__item--info {
+  border: 1px solid var(--outline);
+}
+
+.notice-strip__dismiss {
+  flex: 0 0 auto;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  font: inherit;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.notice-strip__dismiss:hover {
+  background: var(--ground);
+}
+
+.notice-strip__dismiss:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 639px) {
+  .notice-strip {
+    padding: 0.4rem 0.35rem 0.4rem 0.6rem;
+  }
+
+  .notice-strip__dismiss {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

@@ -204,6 +204,24 @@ try {
       const sheet = document.querySelector('.inspector--sheet').getBoundingClientRect();
       return { raised: !!document.querySelector('.inspector--raised'), value: t.value, focused: document.activeElement === t, boxBottom: Math.round(box.bottom), sheetTop: Math.round(sheet.top), visibleAboveSheet: box.bottom <= sheet.top && box.top >= 0, summary: document.querySelector('.inspector__summary').textContent };
     })()`);
+    // Raised with a text box selected: capped at 50% of the height, the nav
+    // row hidden, and at least 300 px of page showing above it, box in view.
+    r.raisedCap = await evaluate(`(() => {
+      const sheet = document.querySelector('.inspector--sheet').getBoundingClientRect();
+      const view = document.querySelector('.viewer__scroll').getBoundingClientRect();
+      const page = document.querySelector('.viewer__canvas').getBoundingClientRect();
+      const box = document.querySelector('.annotation--editing, .annotation--selected').getBoundingClientRect();
+      const pageShown = Math.max(0, Math.min(page.bottom, sheet.top) - Math.max(page.top, view.top));
+      return {
+        sheetHeight: Math.round(sheet.height),
+        cap: Math.round(innerHeight * 0.5),
+        withinCap: sheet.height <= innerHeight * 0.5 + 1,
+        navHidden: !document.querySelector('.inspector--sheet .tool-row__group--nav'),
+        pageShown: Math.round(pageShown),
+        pageShownOk: pageShown >= 300,
+        boxInView: box.top >= view.top && box.bottom <= sheet.top,
+      };
+    })()`);
     await shoot(`phone-${mode}-typing-raised`);
     await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
     await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });

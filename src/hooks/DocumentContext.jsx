@@ -108,6 +108,20 @@ function describeFailures(failures) {
     .join(', ')}.`;
 }
 
+/**
+ * The header notice is a list of { kind, text }: 'error' for something that
+ * failed, 'info' for something the user should know. The kind comes from
+ * where the message is raised, never from its wording.
+ */
+const errorNotice = (text) => [{ kind: 'error', text }];
+
+function loadNotices(failures, unlocked) {
+  const notices = [];
+  if (failures.length) notices.push({ kind: 'error', text: describeFailures(failures) });
+  if (unlocked.length) notices.push({ kind: 'info', text: describeUnlocked(unlocked) });
+  return notices.length ? notices : null;
+}
+
 export function DocumentProvider({ children }) {
   // [{ id, name, size, numPages, pdfDoc, file }] — the first is the primary
   // document. The File is kept so export can re-read pristine bytes (pdf.js
@@ -123,7 +137,7 @@ export function DocumentProvider({ children }) {
   const [error, setError] = useState(null);
   const [adding, setAdding] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [notice, setNotice] = useState(null); // dismissible error message
+  const [notice, setNotice] = useState(null); // [{ kind: 'error' | 'info', text }] or null
   const [progress, setProgress] = useState(null); // { done, total } while rendering images
   // Image files waiting in the "Create a PDF from images" dialog.
   const [imagesToPdf, setImagesToPdf] = useState(null);
@@ -368,11 +382,7 @@ export function DocumentProvider({ children }) {
       setPages(model);
       setSelected(new Set([model[0].id]));
       setAnchorId(model[0].id);
-      const messages = [
-        failures.length && describeFailures(failures),
-        unlocked.length && describeUnlocked(unlocked),
-      ].filter(Boolean);
-      setNotice(messages.length ? messages.join(' ') : null);
+      setNotice(loadNotices(failures, unlocked));
       setStatus('ready');
     },
     [loadSources, setTool, revokeImageUrls]
@@ -405,11 +415,8 @@ export function DocumentProvider({ children }) {
         return;
       }
       setAdding(false);
-      const messages = [
-        failures.length && describeFailures(failures),
-        unlocked.length && describeUnlocked(unlocked),
-      ].filter(Boolean);
-      if (messages.length) setNotice(messages.join(' '));
+      const notices = loadNotices(failures, unlocked);
+      if (notices) setNotice(notices);
       if (loaded.length === 0) return;
 
       const added = loaded.flatMap((src) => createPageModel(src.numPages, src.id));
@@ -664,7 +671,7 @@ export function DocumentProvider({ children }) {
         // eslint-disable-next-line no-console
         console.error('Export failed', err);
         setNotice(
-          err instanceof ExportError ? err.message : 'Export failed. Please try again.'
+          errorNotice(err instanceof ExportError ? err.message : 'Export failed. Please try again.')
         );
         return false;
       } finally {
@@ -710,9 +717,11 @@ export function DocumentProvider({ children }) {
         // eslint-disable-next-line no-console
         console.error('Image export failed', err);
         setNotice(
-          err instanceof ExportError
-            ? err.message
-            : `Couldn’t export images${err?.message ? `: ${err.message}` : '.'}`
+          errorNotice(
+            err instanceof ExportError
+              ? err.message
+              : `Couldn’t export images${err?.message ? `: ${err.message}` : '.'}`
+          )
         );
         return false;
       } finally {
@@ -793,7 +802,9 @@ export function DocumentProvider({ children }) {
         // eslint-disable-next-line no-console
         console.error('Compression failed', err);
         setNotice(
-          err instanceof ExportError ? err.message : 'Compression failed. Please try again.'
+          errorNotice(
+            err instanceof ExportError ? err.message : 'Compression failed. Please try again.'
+          )
         );
         return null;
       } finally {
@@ -903,7 +914,7 @@ export function DocumentProvider({ children }) {
       const bytes = new Uint8Array(await file.arrayBuffer());
       const info = sniffImage(bytes);
       if (!info) {
-        setNotice(`“${file.name}” isn’t a PNG or JPG image, so it can’t be placed.`);
+        setNotice(errorNotice(`“${file.name}” isn’t a PNG or JPG image, so it can’t be placed.`));
         return false;
       }
       let url;

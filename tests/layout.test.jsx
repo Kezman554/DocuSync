@@ -1,4 +1,5 @@
 import { createEvent, fireEvent, render, screen, within } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { openPdf, setupDom, thumb } from './helpers/fakePdf.jsx';
@@ -245,5 +246,45 @@ describe('inspector', () => {
     const panel = within(inspector()).getByRole('region', { name: 'Stamps' });
     expect(panel).toBeInTheDocument();
     expect(headings()).toEqual(expect.arrayContaining(['Page 1', 'Document']));
+  });
+});
+
+describe('notice strip', () => {
+  it('an error sits in a strip right under the header, with the danger edge and a ×', async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    await openPdf(App, user);
+    const gif = new File([readFileSync('tests/fixtures/not-supported.gif')], 'pic.png', { type: 'image/png' });
+    await user.upload(screen.getByLabelText('Choose image'), gif);
+
+    const strip = await screen.findByRole('alert');
+    expect(strip).toHaveClass('notice-strip');
+    expect(strip).toHaveTextContent('isn’t a PNG or JPG image');
+    expect(strip.querySelector('.notice-strip__item--error')).not.toBeNull();
+    expect(strip.querySelector('.notice-strip__item--info')).toBeNull();
+    // In the flow between the header and the workspace: it pushes the tool
+    // row, thumbnails and inspector down instead of covering them.
+    expect(screen.getByRole('banner').nextElementSibling).toBe(strip);
+    expect(strip.nextElementSibling).toHaveClass('dropzone');
+    expect(screen.getByRole('banner')).not.toContainElement(strip);
+
+    await user.click(within(strip).getByRole('button', { name: 'Dismiss' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('no document open', () => {
+  it('has no thumbnail column and no ☰, but keeps the tool row for Stamps', () => {
+    render(<App />);
+    expect(screen.queryByRole('complementary', { name: 'Page thumbnails' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Toggle thumbnails' })).toBeNull();
+    expect(screen.getByRole('toolbar', { name: 'Tools' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Stamps' })).toBeEnabled();
+  });
+
+  it('shows the column once a PDF opens', async () => {
+    const user = userEvent.setup();
+    await openPdf(App, user);
+    expect(screen.getByRole('complementary', { name: 'Page thumbnails' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Toggle thumbnails' })).toBeInTheDocument();
   });
 });
