@@ -5,7 +5,7 @@ import ExportImagesDialog from './ExportImagesDialog.jsx';
 import CompressDialog from './CompressDialog.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import ProtectDialog from './ProtectDialog.jsx';
-import ProtectOffer, { UNPROTECTED_SENTENCE } from './ProtectOffer.jsx';
+import ProtectOffer from './ProtectOffer.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
 import MenuButton from './MenuButton.jsx';
 import { redactionWarning } from '../lib/redaction.js';
@@ -250,11 +250,7 @@ function Toolbar({ onToggleSidebar }) {
                 ? 'Some characters won’t export'
                 : 'Export without a password?'
           }
-          message={
-            redactedPages.length
-              ? redactionWarning(redactedPages.length)
-              : missingNote ?? UNPROTECTED_SENTENCE
-          }
+          // Each warning is its own note; the password offer carries its button.
           confirmLabel="Export PDF"
           onConfirm={() => {
             setExportConfirm(false);
@@ -262,14 +258,18 @@ function Toolbar({ onToggleSidebar }) {
           }}
           onCancel={() => setExportConfirm(false)}
         >
-          {redactedPages.length > 0 && missingNote && (
+          {redactedPages.length > 0 && (
+            <p className="confirm-dialog__warning" role="note">
+              {redactionWarning(redactedPages.length)}
+            </p>
+          )}
+          {missingNote && (
             <p className="confirm-dialog__warning" role="note">
               {missingNote}
             </p>
           )}
           {hadPassword && (
             <ProtectOffer
-              sentence={redactedPages.length > 0 || Boolean(missingNote)}
               onProtect={() => {
                 setExportConfirm(false);
                 openProtect();

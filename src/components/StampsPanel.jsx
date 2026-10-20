@@ -205,10 +205,11 @@ function InitialsForm() {
 }
 
 /**
- * The stamps library panel: browse presets and saved stamps, create
- * initials, add signature images, rename/delete, and select one to place.
+ * The stamps library, shown as the inspector's top section while the Stamps
+ * tool is active: browse presets and saved stamps, create initials, add
+ * signature images, rename/delete, and select one to place.
  */
-function StampsPanel({ open, onClose }) {
+function StampsPanel() {
   const { hasDocument } = useDocumentContext();
   const {
     stamps,
@@ -226,8 +227,6 @@ function StampsPanel({ open, onClose }) {
   const [drawing, setDrawing] = useState(false);
   const [photoFile, setPhotoFile] = useState(null);
 
-  if (!open) return null;
-
   const sections = [
     { kind: 'tick', title: 'Ticks', empty: null },
     { kind: 'initials', title: 'Initials', empty: 'No initials yet — create one below.' },
@@ -235,24 +234,15 @@ function StampsPanel({ open, onClose }) {
   ];
 
   return (
-    <aside id="stamps-panel" className="stamps-panel" aria-label="Stamps">
-      <header className="stamps-panel__header">
-        <h2 className="stamps-panel__title">Stamps</h2>
-        <button
-          type="button"
-          className="stamps-panel__close"
-          onClick={onClose}
-          aria-label="Close stamps"
-        >
-          ×
-        </button>
-      </header>
-
+    <div className="stamps-panel">
       <div className="stamps-panel__body">
         <p className="stamps-panel__intro">
-          {hasDocument
-            ? 'Choose a stamp, then click the page to place it.'
-            : 'Open a PDF to place stamps.'}
+          <span>
+            {hasDocument
+              ? 'Pick a stamp, then click the page to place it.'
+              : 'Open a PDF to place stamps.'}
+          </span>{' '}
+          <span>Stamps are saved in this browser only.</span>
         </p>
         {!persistent && (
           <p className="stamps-panel__note">
@@ -275,7 +265,7 @@ function StampsPanel({ open, onClose }) {
             <section key={kind} className="stamps-panel__section" aria-label={title}>
               <h3 className="stamps-panel__heading">{title}</h3>
               {list.length > 0 ? (
-                <ul className="stamps-panel__grid">
+                <ul className={`stamps-panel__grid stamps-panel__grid--${kind}`}>
                   {list.map((stamp) => (
                     <StampTile key={stamp.id} stamp={stamp} onDelete={setPendingDelete} />
                   ))}
@@ -373,7 +363,7 @@ function StampsPanel({ open, onClose }) {
           onCancel={() => setPendingDelete(null)}
         />
       )}
-    </aside>
+    </div>
   );
 }
 

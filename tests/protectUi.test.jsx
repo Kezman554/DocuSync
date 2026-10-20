@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -220,6 +220,54 @@ describe('exporting a once-protected file without a password', () => {
     await user.type(within(dialog).getByLabelText('Password'), 'open-sesame{Enter}');
     await screen.findByText('Page 1 of 3');
   }
+
+  it('Export PDF shows all three warnings together, each in its own note', async () => {
+    const user = userEvent.setup();
+    await openLocked(user);
+    const pointer = (type, el, x, y) => {
+      const event = createEvent[type](el, { bubbles: true, cancelable: true });
+      Object.defineProperties(event, {
+        clientX: { value: x },
+        clientY: { value: y },
+        pointerId: { value: 1 },
+        button: { value: 0 },
+      });
+      fireEvent(el, event);
+    };
+    const layer = () => screen.findByRole('group', { name: 'Annotations on page 1' });
+
+    // A character the standard fonts can't write…
+    await user.click(screen.getByRole('button', { name: 'Add text' }));
+    let el = await layer();
+    pointer('pointerDown', el, 100, 100);
+    pointer('pointerUp', el, 100, 100);
+    await user.type(screen.getByRole('textbox', { name: 'Text' }), 'łódka');
+    await user.keyboard('{Escape}');
+    // …and a redaction box.
+    await user.click(screen.getByRole('button', { name: 'Redact' }));
+    el = await layer();
+    pointer('pointerDown', el, 100, 300);
+    pointer('pointerMove', el, 300, 360);
+    pointer('pointerUp', el, 300, 360);
+    await user.keyboard('{Escape}');
+
+    await user.click(screen.getByRole('button', { name: 'Export PDF' }));
+    const dialog = screen.getByRole('alertdialog', { name: 'Export with redactions?' });
+    const notes = within(dialog).getAllByRole('note');
+    expect(notes).toHaveLength(3);
+    expect(notes[0]).toHaveTextContent(/1 redacted page. It becomes an image/);
+    expect(notes[1]).toHaveTextContent('On page 1, ł won’t appear in the exported PDF');
+    expect(notes[2]).toHaveTextContent(SENTENCE);
+    expect(notes[2]).toHaveClass('protect-offer');
+    expect(within(notes[2]).getByRole('button', { name: 'Export with password…' })).toBeInTheDocument();
+    // Each is its own note: no note holds another's wording.
+    expect(notes[0]).not.toHaveTextContent('won’t appear');
+    expect(notes[1]).not.toHaveTextContent(SENTENCE);
+    expect(dialog).toHaveAccessibleDescription(/redacted page.*won’t appear.*password-protected/);
+
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(downloadBytes).not.toHaveBeenCalled();
+  });
 
   it('Export PDF says so first, offers Export with password, and still exports', async () => {
     const user = userEvent.setup();

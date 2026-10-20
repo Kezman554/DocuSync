@@ -69,7 +69,7 @@ const DIAGONAL = [[50, 150], [100, 132], [150, 114], [200, 96], [250, 78], [300,
 
 async function openSignatureDialog(user) {
   await user.click(screen.getByRole('button', { name: 'Stamps' }));
-  const panel = screen.getByRole('complementary', { name: 'Stamps' });
+  const panel = screen.getByRole('region', { name: 'Stamps' });
   await waitFor(() => expect(within(panel).queryByText('Loading your stamps…')).toBeNull());
   await user.click(within(panel).getByRole('button', { name: 'Draw signature…' }));
   const dialog = screen.getByRole('dialog', { name: 'Draw your signature' });
@@ -132,7 +132,7 @@ describe('draw a signature', () => {
     cleanup();
     render(<App />);
     await user.click(screen.getByRole('button', { name: 'Stamps' }));
-    const panel2 = screen.getByRole('complementary', { name: 'Stamps' });
+    const panel2 = screen.getByRole('region', { name: 'Stamps' });
     expect(await within(panel2).findByRole('button', { name: 'My signature' })).toBeInTheDocument();
   });
 

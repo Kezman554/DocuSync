@@ -72,7 +72,7 @@ const expectMatrix = (actual, expected) => actual.forEach((v, i) => expect(v).to
 async function setUp(user) {
   await openPdf(App, user, await letterPdf());
   await user.click(screen.getByRole('button', { name: 'Stamps' }));
-  const panel = screen.getByRole('complementary', { name: 'Stamps' });
+  const panel = screen.getByRole('region', { name: 'Stamps' });
   await within(panel).findByRole('button', { name: 'My signature' });
   const layer = await screen.findByRole('group', { name: /^Annotations on page/ });
   return { panel, layer };

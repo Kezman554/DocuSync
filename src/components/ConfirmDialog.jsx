@@ -9,6 +9,7 @@ const FOCUSABLE =
  * `focusCancel` is false (e.g. when `children` holds an autoFocus input).
  * Tab is trapped inside, and Escape or a backdrop click cancels.
  * `cancelLabel={null}` leaves out the Cancel button (e.g. a final "Done").
+ * With no `message`, `children` (e.g. warning notes) describe the dialog.
  */
 function ConfirmDialog({
   title,
@@ -69,10 +70,16 @@ function ConfirmDialog({
         <h2 id={titleId} className="confirm-dialog__title">
           {title}
         </h2>
-        <p id={messageId} className="confirm-dialog__message">
-          {message}
-        </p>
-        {children}
+        {message != null ? (
+          <>
+            <p id={messageId} className="confirm-dialog__message">
+              {message}
+            </p>
+            {children}
+          </>
+        ) : (
+          <div id={messageId}>{children}</div>
+        )}
         <div className="confirm-dialog__actions">
           {cancelLabel !== null && (
             <button

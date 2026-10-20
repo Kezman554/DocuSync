@@ -6,16 +6,17 @@ import ExtractPagesDialog from './ExtractPagesDialog.jsx';
 import PageNumbersDialog from './PageNumbersDialog.jsx';
 import WatermarkDialog from './WatermarkDialog.jsx';
 import ProtectDialog from './ProtectDialog.jsx';
+import StampsPanel from './StampsPanel.jsx';
 import './Inspector.css';
 
 const KIND_NAMES = { marker: 'Marker', image: 'Image', redaction: 'Redaction box', text: 'Text box' };
 
 /** A titled inspector section. */
-function Section({ title, children }) {
-  const id = useId();
+function Section({ title, id, children }) {
+  const headingId = useId();
   return (
-    <section className="inspector__section" aria-labelledby={id}>
-      <h2 id={id} className="inspector__heading">
+    <section id={id} className="inspector__section" aria-labelledby={headingId}>
+      <h2 id={headingId} className="inspector__heading">
         {title}
       </h2>
       {children}
@@ -27,10 +28,11 @@ function Section({ title, children }) {
  * The right-hand panel (DESIGN.md › Layout). It follows what's selected, in
  * this order, each section only when it applies: the selected annotation
  * (text format and the missing-character warning), the selected pages
- * (or the current page), then the document. `children` (the stamps
- * panel) goes first, and keeps the column open with no document.
+ * (or the current page), then the document. While the Stamps tool is
+ * active the stamps library comes first, with the rest still below it; it
+ * also keeps the inspector open with no document, to manage stamps.
  */
-function Inspector({ stampsOpen = false, children }) {
+function Inspector({ stampsOpen = false }) {
   const {
     hasDocument,
     pages,
@@ -79,7 +81,11 @@ function Inspector({ stampsOpen = false, children }) {
 
   return (
     <aside className="inspector" aria-label="Inspector">
-      {children}
+      {stampsOpen && (
+        <Section id="stamps-panel" title="Stamps">
+          <StampsPanel />
+        </Section>
+      )}
       {hasDocument && (
         <>
           {annotationSection}

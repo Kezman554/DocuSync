@@ -242,7 +242,7 @@ describe('inspector', () => {
     const user = userEvent.setup();
     await openPdf(App, user);
     await user.click(screen.getByRole('button', { name: 'Stamps' }));
-    const panel = within(inspector()).getByRole('complementary', { name: 'Stamps' });
+    const panel = within(inspector()).getByRole('region', { name: 'Stamps' });
     expect(panel).toBeInTheDocument();
     expect(headings()).toEqual(expect.arrayContaining(['Page 1', 'Document']));
   });

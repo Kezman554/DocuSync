@@ -943,3 +943,25 @@ DocuSync — Progress Log
   settings, stamps open). Moved-control tests use tests/helpers/menus.js.
 - Screenshots 1280×800 and 1024×768, light and dark: header and tool row
   don't overflow at either size.
+
+2026-10-20 — Stamps in the inspector, empty state, dialogs
+- Stamps: the library is the inspector's top section ("Stamps", region)
+  while the tool is active, with the page and Document sections still
+  below (rotate/delete with Stamps open keeps its test). The separate aside
+  and its header/close button are gone; placing, renaming, deleting and
+  IndexedDB storage unchanged. Intro: "Pick a stamp, then click the page to
+  place it." (or "Open a PDF to place stamps.") + "Stamps are saved in this
+  browser only." Ticks four across. Signatures keep Add from image… too
+  (its tests and behaviour). The can't-save note is an outlined caution.
+- Empty state: surface panel with a dashed outline edge in the well, a
+  lock-on-document icon, the new wording, Open PDF (accent), Create PDF from
+  images (outlined), "or drop a PDF anywhere on this page".
+- Dialogs: Cancel and other secondary buttons outlined (transparent),
+  confirm accent pill, destructive stays danger. Export PDF's confirm has no
+  message line now: redaction, missing characters and the re-lock offer are
+  each their own note (the notes describe the dialog). Password info note
+  is an outlined note. Shell (raised, 24px, scrim) unchanged.
+- Tests: 477 (+1: all three export warnings together, separate notes, the
+  offer carrying its button). Stamps tests look for the inspector region.
+- Screenshots 1280×800 light/dark: empty state, stamps inspector, the
+  three-warning dialog (checked: the scrim is above the header notice).

@@ -12,21 +12,6 @@
   background: var(--ground);
 }
 
-/* The stamps panel heads the column while Stamps is open; the column
-   scrolls as one. */
-.inspector > .stamps-panel {
-  flex: 0 0 auto;
-  width: auto;
-  min-height: auto;
-  border-left: none;
-  border-radius: var(--radius-panel);
-  overflow: hidden;
-}
-
-.inspector > .stamps-panel .stamps-panel__body {
-  overflow: visible;
-}
-
 .inspector__section {
   display: flex;
   flex-direction: column;

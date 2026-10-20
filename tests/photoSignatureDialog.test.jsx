@@ -45,7 +45,7 @@ const blankPhoto = () => makePhoto({ strokes: [] }).image;
 
 async function choosePhoto(user, name = 'my-signature.jpg') {
   await user.click(screen.getByRole('button', { name: 'Stamps' }));
-  const panel = screen.getByRole('complementary', { name: 'Stamps' });
+  const panel = screen.getByRole('region', { name: 'Stamps' });
   await waitFor(() => expect(within(panel).queryByText('Loading your stamps…')).toBeNull());
   await user.upload(
     within(panel).getByLabelText('Choose signature photo'),

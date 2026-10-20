@@ -7,7 +7,6 @@ import Viewer from './components/Viewer.jsx';
 import Inspector from './components/Inspector.jsx';
 import DropZone from './components/DropZone.jsx';
 import DeletePagesDialog from './components/DeletePagesDialog.jsx';
-import StampsPanel from './components/StampsPanel.jsx';
 import ImagesToPdfDialog from './components/ImagesToPdfDialog.jsx';
 import PasswordPromptDialog from './components/PasswordPromptDialog.jsx';
 import './App.css';
@@ -52,11 +51,7 @@ function App() {
                 />
               )}
               <Viewer stampsOpen={stampsOpen} onToggleStamps={() => setStampsOpen((open) => !open)} />
-              {/* The right column. While Stamps is open the stamps library
-                  (its own panel for now) heads it, above the page sections. */}
-              <Inspector stampsOpen={stampsOpen}>
-                <StampsPanel open={stampsOpen} onClose={() => setStampsOpen(false)} />
-              </Inspector>
+              <Inspector stampsOpen={stampsOpen} />
             </div>
           </DropZone>
           <DeletePagesDialog />

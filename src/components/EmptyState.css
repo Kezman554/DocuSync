@@ -1,37 +1,47 @@
+/* Centred in the well: a panel with a dashed outline edge. */
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 0.6rem;
-  padding: 2rem;
-  max-width: 360px;
+  gap: 0.75rem;
+  width: min(440px, calc(100% - 2rem));
+  padding: 2.25rem 2rem;
+  border: 2px dashed var(--outline);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
 }
 
 .empty-state__icon {
-  font-size: 3rem;
-  line-height: 1;
+  width: 3.5rem;
+  height: 3.5rem;
+  color: var(--accent);
 }
 
 .empty-state__title {
-  margin: 0;
-  font-size: 1.25rem;
+  margin: 0.25rem 0 0;
+  font-size: 1.35rem;
+  font-weight: 700;
   color: var(--text);
 }
 
 .empty-state__text {
-  margin: 0;
-  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+  max-width: 30ch;
+  font-size: 0.95rem;
+  line-height: 1.5;
   color: var(--text-secondary);
 }
 
 .empty-state__btn {
-  margin-top: 0.5rem;
   font: inherit;
-  font-size: 0.9rem;
-  padding: 0.55rem 1.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  min-width: 15rem;
+  min-height: 2.75rem;
+  padding: 0.6rem 1.4rem;
   border-radius: var(--radius-pill);
-  border: none;
+  border: 1px solid var(--accent-fill);
   background: var(--accent-fill);
   color: var(--on-accent);
   cursor: pointer;
@@ -41,14 +51,25 @@
   background: var(--accent-fill-hover);
 }
 
+.empty-state__btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .empty-state__btn--secondary {
+  border-color: var(--outline);
   background: transparent;
-  border: 1px solid var(--outline);
   color: var(--text);
 }
 
 .empty-state__btn--secondary:hover {
   background: var(--ground);
+}
+
+.empty-state__drop {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
 }
 
 .empty-state__file-input {

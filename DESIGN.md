@@ -15,7 +15,7 @@ A private document tool that says so: calm green-grey panels around a white page
 ## Layout (L4)
 - **Header, one row:** thumbnails toggle, name, seal, file name, **File ▾** (Open another, Add PDF, From images, Close), **Export PDF** as a split button whose menu holds Export with password, Extract pages, Export images and Compress.
 - **Left:** page thumbnails. **Centre:** one tool row (Marker, Text, Image, Redact, Stamps), with page navigation and zoom at its right end, then the page.
-- **Right: the inspector.** It changes with what's selected, in this order: the selected annotation (text box format controls and the missing-character warning), then the selected pages (rotate, extract, delete), then Document (page numbers, watermark, password). With Stamps active, it shows the stamps library: ticks, initials, signatures.
+- **Right: the inspector.** It changes with what's selected, in this order: the selected annotation (text box format controls and the missing-character warning), then the selected pages (rotate, extract, delete), then Document (page numbers, watermark, password). With Stamps active, the stamps library (ticks, initials, signatures) is its top section, and the selected-pages and Document sections stay below it.
 - **Nothing floats over the page.** The text format bar and the page-controls panel are both replaced by the inspector.
 - **Phone (under 640 px):** the inspector becomes a bottom sheet. Lowered, it shows a one-line summary plus page navigation and zoom. Raised, it shows the full sections and stops short of the selected annotation. Thumbnails stay in the ☰ drawer, with long-press drag. Pages open fitted to the width. The tool row spans the screen. Controls are at least 44 px.
 

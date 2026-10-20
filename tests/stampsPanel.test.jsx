@@ -56,7 +56,7 @@ const click = (el, x, y) => {
 /** Open the stamps panel and wait for saved stamps to load. */
 async function openPanel(user) {
   await user.click(screen.getByRole('button', { name: 'Stamps' }));
-  const panel = screen.getByRole('complementary', { name: 'Stamps' });
+  const panel = screen.getByRole('region', { name: 'Stamps' });
   await waitFor(() => expect(within(panel).queryByText('Loading your stamps…')).toBeNull());
   return panel;
 }
