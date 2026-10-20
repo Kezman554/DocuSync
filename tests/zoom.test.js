@@ -4,6 +4,7 @@ import {
   roundScale,
   zoomIn,
   zoomOut,
+  fitWidthScale,
   clampPage,
   formatZoom,
   MIN_SCALE,
@@ -33,6 +34,32 @@ describe('zoomIn / zoomOut', () => {
     let s = 1;
     for (let i = 0; i < 3; i += 1) s = zoomIn(s);
     expect(s).toBe(1.75);
+  });
+});
+
+describe('zoom from a fitted scale', () => {
+  it('steps back onto the 25% grid, so 100% is reachable', () => {
+    expect(zoomIn(0.53)).toBe(0.75);
+    expect(zoomIn(zoomIn(0.53))).toBe(1);
+    expect(zoomOut(0.53)).toBe(0.5);
+    expect(zoomOut(0.79)).toBe(0.75);
+  });
+});
+
+describe('fitWidthScale', () => {
+  it('fits a page wider than the viewer, rounding down', () => {
+    expect(fitWidthScale(612, 342)).toBe(0.55); // Letter on a 390 px phone
+    expect(fitWidthScale(612, 486)).toBe(0.79); // 1024 px with the inspector open
+  });
+
+  it('never enlarges a page that already fits', () => {
+    expect(fitWidthScale(595, 900)).toBe(1);
+  });
+
+  it('stays within the zoom limits and copes with no size yet', () => {
+    expect(fitWidthScale(5000, 100)).toBe(MIN_SCALE);
+    expect(fitWidthScale(0, 400)).toBe(1);
+    expect(fitWidthScale(612, 0)).toBe(1);
   });
 });
 

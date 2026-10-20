@@ -87,3 +87,26 @@
 .page-numbers__remove {
   margin-top: 0.5rem;
 }
+
+/* Phone: a bigger little page, so each spot is a 44 px target. */
+@media (max-width: 639px) {
+  .page-numbers__positions {
+    width: 152px;
+    height: 196px;
+  }
+
+  .page-numbers__position {
+    width: 44px;
+    height: 44px;
+  }
+
+  .page-numbers__position--top-center,
+  .page-numbers__position--bottom-center {
+    left: 53px;
+  }
+
+  .page-numbers__dot {
+    width: 20px;
+    height: 10px;
+  }
+}

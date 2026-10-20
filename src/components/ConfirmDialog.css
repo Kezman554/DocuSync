@@ -181,3 +181,27 @@
   font-size: 0.75rem;
   color: var(--text-secondary);
 }
+
+/* Phone: every control in every dialog at least 44 px. Checkboxes and
+   radios are tapped through their labels, so the labels get the height. */
+@media (max-width: 639px) {
+  .confirm-dialog {
+    padding: 1.1rem;
+    max-height: calc(100vh - 1rem);
+    overflow-y: auto;
+  }
+
+  .confirm-dialog__btn,
+  .confirm-dialog input:not([type='checkbox'], [type='radio'], [type='file']),
+  .confirm-dialog select,
+  .confirm-dialog textarea {
+    min-height: 44px;
+  }
+
+  .confirm-dialog label:has(> input[type='checkbox'], > input[type='radio']) {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+}

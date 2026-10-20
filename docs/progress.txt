@@ -965,3 +965,39 @@ DocuSync — Progress Log
   offer carrying its button). Stamps tests look for the inspector region.
 - Screenshots 1280×800 light/dark: empty state, stamps inspector, the
   three-warning dialog (checked: the scrim is above the header notice).
+
+2026-10-20 — Phone layout (under 640 px) and fit-to-width on open
+- Header, one row at 360 px: ☰, name, seal as an icon (role=img with its
+  words as aria-label), File ▾ (plus Dark/Light mode on a phone) and
+  Export ▾ ("Export" shown, "Export PDF" its name). useMediaQuery(PHONE_QUERY)
+  in src/hooks/useMediaQuery.js.
+- Tool row spans the width: five 44 px+ tools, label under the icon. Page
+  navigation and zoom (now PageNav.jsx) move to the sheet.
+- Inspector as a bottom sheet: lowered = handle, summary line of the top
+  section (src/lib/sheetSummary.js: "Text box · Helvetica 16 · 1 character
+  won’t export", "Page 1 · rotate, extract, delete", …) and PageNav; raised
+  = the sections scrolling inside it (max 78vh). Tap the summary or handle,
+  or drag the handle. Its height feeds --sheet-height, the viewer's bottom
+  padding and scroll-padding, so raising scrolls the selected/edited
+  annotation into view above it. Stamps raises it on the library; arming a
+  stamp lowers it. z-index 4: under the drawer (6) and its scrim (5).
+- 44 px: menus, stamps controls, every dialog's buttons, inputs, selects and
+  checkbox/radio labels, the page-number spots (bigger mini page), and the
+  annotation handles and × (44 px invisible target, mark drawn by a
+  pseudo-element at its old size).
+- Fit to width on open at any width (fitWidthScale in lib/zoom.js; never
+  above 100%); zoom steps snap back onto the 25% grid so 100% is reachable.
+  .viewer__scroll no longer justify-content: center, which pushed an
+  overflowing page's left edge out of reach.
+- Tests: 494 (+13: sheet states, handle drag/tap, summary as selection
+  changes, stamps in the sheet, phone header; fit at 1024×768 → 79% in
+  jsdom with the left edge in view, back to 100% by zoom; +zoom/summary
+  unit tests).
+- Headless Edge, 390×844 touch, light and dark (scripts/phone-check.mjs):
+  no horizontal scroll; header one row at 390 and 360; page opens at 61%
+  with both edges in view; sheet 149 px lowered, raised by tap and drag,
+  lowered by drag; raising scrolls the selected box above it; typing with
+  it raised ("Claim łódka", focused, above the sheet); drawer long-press
+  drag to the bottom edge auto-scrolled ~1480 px and reordered, and only the
+  drawer is under its bottom 56 px; no control under 44×44 on any screen,
+  menu or dialog checked. Desktop: 1024×768 opens at 81%, left edge in view.

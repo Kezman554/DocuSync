@@ -321,3 +321,22 @@
 .stamps-panel__file {
   display: none;
 }
+
+/* Phone: every control at least 44 px. */
+@media (max-width: 639px) {
+  .stamps-panel__input,
+  .stamp-tile__rename,
+  .stamps-panel__btn {
+    min-height: 44px;
+  }
+
+  .stamps-panel__color,
+  .stamp-tile__icon {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .stamp-tile__select {
+    min-height: 48px;
+  }
+}

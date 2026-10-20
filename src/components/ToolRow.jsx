@@ -1,29 +1,18 @@
 import { useRef } from 'react';
 import { useDocumentContext } from '../hooks/DocumentContext.jsx';
-import { formatZoom, MIN_SCALE, MAX_SCALE } from '../lib/zoom.js';
+import { PHONE_QUERY, useMediaQuery } from '../hooks/useMediaQuery.js';
+import PageNav from './PageNav.jsx';
 import './ToolRow.css';
 
 /**
  * The one tool row above the page (DESIGN.md › Layout): the tools on the
- * left, page navigation and zoom at the right end. Nothing floats over the
+ * left, page navigation and zoom (PageNav) at the right end. Nothing floats over the
  * page; page actions (rotate, delete) live in the inspector. With no
  * document open only Stamps works, so the library can be managed first.
  */
 function ToolRow({ stampsOpen = false, onToggleStamps }) {
-  const {
-    hasDocument,
-    currentPage,
-    numPages,
-    scale,
-    nextPage,
-    prevPage,
-    tool,
-    setTool,
-    pendingImage,
-    loadImageFile,
-    zoomIn,
-    zoomOut,
-  } = useDocumentContext();
+  const { hasDocument, tool, setTool, pendingImage, loadImageFile } = useDocumentContext();
+  const phone = useMediaQuery(PHONE_QUERY);
   const imageInputRef = useRef(null);
 
   const toolClass = (on) => `tool-row__btn tool-row__btn--tool${on ? ' tool-row__btn--active' : ''}`;
@@ -110,51 +99,8 @@ function ToolRow({ stampsOpen = false, onToggleStamps }) {
         />
       </div>
 
-      {hasDocument && (
-        <div className="tool-row__group tool-row__group--nav">
-          <button
-            type="button"
-            className="tool-row__btn tool-row__btn--icon"
-            onClick={prevPage}
-            disabled={currentPage <= 1}
-            aria-label="Previous page"
-          >
-            ‹
-          </button>
-          <span className="tool-row__label">
-            Page {currentPage} of {numPages}
-          </span>
-          <button
-            type="button"
-            className="tool-row__btn tool-row__btn--icon"
-            onClick={nextPage}
-            disabled={currentPage >= numPages}
-            aria-label="Next page"
-          >
-            ›
-          </button>
-          <span className="tool-row__sep" aria-hidden="true" />
-          <button
-            type="button"
-            className="tool-row__btn tool-row__btn--icon"
-            onClick={zoomOut}
-            disabled={scale <= MIN_SCALE}
-            aria-label="Zoom out"
-          >
-            −
-          </button>
-          <span className="tool-row__label tool-row__label--zoom">{formatZoom(scale)}</span>
-          <button
-            type="button"
-            className="tool-row__btn tool-row__btn--icon"
-            onClick={zoomIn}
-            disabled={scale >= MAX_SCALE}
-            aria-label="Zoom in"
-          >
-            +
-          </button>
-        </div>
-      )}
+      {/* On a phone, navigation and zoom live in the bottom sheet. */}
+      {hasDocument && !phone && <PageNav />}
     </div>
   );
 }

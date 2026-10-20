@@ -116,9 +116,38 @@
   display: none;
 }
 
+/* Phone: the tools span the width, each a 44 px+ target with its label
+   under the icon. Navigation and zoom are in the bottom sheet. */
 @media (max-width: 639px) {
   .tool-row {
-    padding: 0.4rem 0.5rem;
-    gap: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    gap: 0.35rem;
+  }
+
+  .tool-row__group--tools {
+    flex: 1 1 auto;
+    gap: 0.3rem;
+  }
+
+  .tool-row__btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .tool-row__group--tools .tool-row__btn--tool {
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.3rem 0.2rem;
+    border-radius: var(--radius-tile);
+    font-size: 0.7rem;
+  }
+
+  .tool-row__group--tools .tool-row__text {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
   }
 }

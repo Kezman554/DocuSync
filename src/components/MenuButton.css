@@ -54,3 +54,10 @@
   color: var(--text-secondary);
   cursor: default;
 }
+
+/* Phone: 44 px tap targets. */
+@media (max-width: 639px) {
+  .menu-button__item {
+    min-height: 44px;
+  }
+}

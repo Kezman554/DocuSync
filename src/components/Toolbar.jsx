@@ -6,7 +6,8 @@ import CompressDialog from './CompressDialog.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import ProtectDialog from './ProtectDialog.jsx';
 import ProtectOffer from './ProtectOffer.jsx';
-import ThemeToggle from './ThemeToggle.jsx';
+import ThemeToggle, { useTheme } from './ThemeToggle.jsx';
+import { PHONE_QUERY, useMediaQuery } from '../hooks/useMediaQuery.js';
 import MenuButton from './MenuButton.jsx';
 import { redactionWarning } from '../lib/redaction.js';
 import './Toolbar.css';
@@ -73,6 +74,14 @@ function Toolbar({ onToggleSidebar }) {
 
   const extraSources = sources.length - 1;
 
+  // On a phone the header has no room for the mode switch: it joins File ▾.
+  const phone = useMediaQuery(PHONE_QUERY);
+  const { next: nextTheme, toggle: toggleTheme } = useTheme();
+  const themeItem = {
+    label: nextTheme === 'dark' ? 'Dark mode' : 'Light mode',
+    onSelect: toggleTheme,
+  };
+
   const fileItems = hasDocument
     ? [
         { label: 'Open another', onSelect: () => inputRef.current?.click() },
@@ -88,6 +97,7 @@ function Toolbar({ onToggleSidebar }) {
           title: 'Create a PDF from photos or images',
         },
         { label: 'Close', onSelect: closeDocument },
+        ...(phone ? [themeItem] : []),
       ]
     : [
         { label: 'Open PDF…', onSelect: () => inputRef.current?.click() },
@@ -96,6 +106,7 @@ function Toolbar({ onToggleSidebar }) {
           onSelect: () => imagesInputRef.current?.click(),
           title: 'Create a PDF from photos or images',
         },
+        ...(phone ? [themeItem] : []),
       ];
 
   const exportItems = [
@@ -140,12 +151,19 @@ function Toolbar({ onToggleSidebar }) {
           </button>
         )}
         <span className="toolbar__brand">DocuSync</span>
-        <span className="toolbar__seal" title="Your files are opened and edited in this browser. Nothing is uploaded.">
+        <span
+          className="toolbar__seal"
+          role="img"
+          aria-label="On this device · nothing uploaded"
+          title="Your files are opened and edited in this browser. Nothing is uploaded."
+        >
           <svg className="toolbar__seal-icon" viewBox="0 0 16 16" aria-hidden="true">
             <rect x="3" y="7" width="10" height="7" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
             <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" strokeWidth="1.5" />
           </svg>
-          <span className="toolbar__seal-text">On this device · nothing uploaded</span>
+          <span className="toolbar__seal-text" aria-hidden="true">
+            On this device · nothing uploaded
+          </span>
         </span>
       </div>
 
@@ -183,13 +201,17 @@ function Toolbar({ onToggleSidebar }) {
               onClick={handleExport}
               disabled={exporting}
               aria-busy={exporting}
+              // A phone shows "Export"; the name stays "Export PDF".
+              aria-label={phone && !exporting ? 'Export PDF' : undefined}
               title="Download a new PDF with your page edits applied"
             >
               {exporting
                 ? progress
                   ? `Rendering ${progress.done}/${progress.total}…`
                   : 'Exporting…'
-                : 'Export PDF'}
+                : phone
+                  ? 'Export'
+                  : 'Export PDF'}
             </button>
             <MenuButton
               className="toolbar__split-more"
@@ -201,7 +223,7 @@ function Toolbar({ onToggleSidebar }) {
             />
           </div>
         )}
-        <ThemeToggle />
+        {!phone && <ThemeToggle />}
         <input
           ref={inputRef}
           type="file"

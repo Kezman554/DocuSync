@@ -22,7 +22,9 @@
   min-height: 0;
   overflow: auto;
   display: flex;
-  justify-content: center;
+  /* No justify-content: center — with a page wider than the viewer it
+     would push the left edge out of reach. The page's auto margins centre
+     it when it fits. */
   align-items: flex-start;
   padding: 1.5rem;
 }
@@ -57,4 +59,13 @@
   color: var(--text-secondary);
   font-size: 0.8rem;
   margin-top: 0.25rem;
+}
+
+/* Phone: a narrower gutter, and room to scroll the page (and a selected
+   annotation) clear of the bottom sheet, whose height Inspector.jsx sets. */
+@media (max-width: 639px) {
+  .viewer__scroll {
+    padding: 0.75rem 0.75rem calc(var(--sheet-height, 0px) + 0.75rem);
+    scroll-padding-bottom: calc(var(--sheet-height, 0px) + 0.5rem);
+  }
 }

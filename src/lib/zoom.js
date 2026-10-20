@@ -17,12 +17,30 @@ export function roundScale(scale) {
   return Math.round(scale * 100) / 100;
 }
 
+/**
+ * Next step up / down on the step grid. From a fitted scale off the grid
+ * (say 0.53) the first step lands back on it (0.75, or 0.5), so 100% is
+ * always reachable.
+ */
 export function zoomIn(scale, step = ZOOM_STEP) {
-  return clamp(roundScale(scale + step), MIN_SCALE, MAX_SCALE);
+  const grid = Math.floor(roundScale(scale / step) + 1e-9) * step;
+  return clamp(roundScale(grid + step), MIN_SCALE, MAX_SCALE);
 }
 
 export function zoomOut(scale, step = ZOOM_STEP) {
-  return clamp(roundScale(scale - step), MIN_SCALE, MAX_SCALE);
+  const grid = Math.ceil(roundScale(scale / step) - 1e-9) * step;
+  return clamp(roundScale(grid - step), MIN_SCALE, MAX_SCALE);
+}
+
+/**
+ * Scale that fits a page `pageWidth` pt wide (as displayed, so rotation
+ * applied) into `available` CSS px. Never above 100%: a page that already
+ * fits opens at its real size. Rounded down so it never overflows.
+ */
+export function fitWidthScale(pageWidth, available) {
+  if (!(pageWidth > 0) || !(available > 0)) return DEFAULT_SCALE;
+  const fit = Math.floor((available / pageWidth) * 100) / 100;
+  return clamp(Math.min(DEFAULT_SCALE, fit), MIN_SCALE, MAX_SCALE);
 }
 
 /** Clamp a requested page into [1, numPages]; falls back to 1 when empty. */

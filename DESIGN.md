@@ -17,7 +17,8 @@ A private document tool that says so: calm green-grey panels around a white page
 - **Left:** page thumbnails. **Centre:** one tool row (Marker, Text, Image, Redact, Stamps), with page navigation and zoom at its right end, then the page.
 - **Right: the inspector.** It changes with what's selected, in this order: the selected annotation (text box format controls and the missing-character warning), then the selected pages (rotate, extract, delete), then Document (page numbers, watermark, password). With Stamps active, the stamps library (ticks, initials, signatures) is its top section, and the selected-pages and Document sections stay below it.
 - **Nothing floats over the page.** The text format bar and the page-controls panel are both replaced by the inspector.
-- **Phone (under 640 px):** the inspector becomes a bottom sheet. Lowered, it shows a one-line summary plus page navigation and zoom. Raised, it shows the full sections and stops short of the selected annotation. Thumbnails stay in the ☰ drawer, with long-press drag. Pages open fitted to the width. The tool row spans the screen. Controls are at least 44 px.
+- **Phone (under 640 px):** the inspector becomes a bottom sheet. Lowered, it shows a one-line summary plus page navigation and zoom. Raised, it shows the full sections and stops short of the selected annotation. Thumbnails stay in the ☰ drawer, with long-press drag. The tool row spans the screen. The light/dark switch moves into File ▾. Controls are at least 44 px.
+- **Opening a page, any width:** a page wider than the viewer at 100% opens fitted to the viewer's width, so its left edge is never cut off; zoom still goes back to 100%.
 
 ## Tokens
 Typeface: Manrope, weights 400/500/600/700, bundled with `@fontsource` (never fetched).

@@ -10,7 +10,11 @@ import {
 import { loadPdfDocument } from '../lib/pdfLoader.js';
 import {
   DEFAULT_SCALE,
+  MAX_SCALE,
+  MIN_SCALE,
+  clamp,
   clampPage,
+  roundScale,
   zoomIn as zoomInScale,
   zoomOut as zoomOutScale,
 } from '../lib/zoom.js';
@@ -918,6 +922,11 @@ export function DocumentProvider({ children }) {
   const zoomIn = useCallback(() => setScale((s) => zoomInScale(s)), []);
   const zoomOut = useCallback(() => setScale((s) => zoomOutScale(s)), []);
   const resetZoom = useCallback(() => setScale(DEFAULT_SCALE), []);
+  /** Set an exact scale (e.g. fit to width), within the zoom limits. */
+  const setZoom = useCallback(
+    (next) => setScale(clamp(roundScale(next), MIN_SCALE, MAX_SCALE)),
+    []
+  );
 
   const value = useMemo(
     () => ({
@@ -998,6 +1007,7 @@ export function DocumentProvider({ children }) {
       setTextStyle,
       zoomIn,
       zoomOut,
+      setZoom,
       resetZoom,
     }),
     [
@@ -1075,6 +1085,7 @@ export function DocumentProvider({ children }) {
       setTextStyle,
       zoomIn,
       zoomOut,
+      setZoom,
       resetZoom,
     ]
   );
