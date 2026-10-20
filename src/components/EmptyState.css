@@ -22,7 +22,7 @@
   background-size: 22px 22px;
   background-position: center;
   /* Only alpha matters in a mask; currentColor is opaque. */
-  mask-image: radial-gradient(ellipse 40% 45% at center, currentColor 35%, transparent 100%);
+  mask-image: radial-gradient(ellipse 80% 90% at center, currentColor 35%, transparent 100%);
 }
 
 /* Window light from the top left. */
