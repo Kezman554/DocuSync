@@ -1022,3 +1022,18 @@ DocuSync — Progress Log
   the header, workspace starts at its bottom, nothing covers it, wraps to
   3–4 lines at 390, no horizontal scroll; no-document layout at both
   widths; phone-check all green in both modes (cap 422 px, 310 px page).
+
+2026-10-20 — App icon: "Fanned, signed"
+- public/icon.svg is the single source (fixed brand colours, outside the
+  literal checks). npm run icons (scripts/icons.mjs, sharp) writes
+  favicon.ico (16/32/48, PNG entries written by the script),
+  apple-touch-icon.png (180), icon-192.png, icon-512.png into public/.
+- 16 px: at stroke 1.7 the signature faded to a pale smudge (checked
+  enlarged on white and dark), so the 16 px render alone uses 2.4.
+- index.html: .ico (sizes="32x32" so Chromium doesn't prefer it) then the
+  SVG as the icon, plus apple-touch-icon. /vite.svg link removed.
+- DESIGN.md › Icon filled in (name, 32-unit grid, shapes, colours, source,
+  command); Enforcement notes the icon's own colours.
+- Checked in the production build: a headed Edge window (own profile,
+  captured with PrintWindow) shows the icon in the tab in the light and the
+  dark browser theme.

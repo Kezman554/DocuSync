@@ -86,14 +86,25 @@ Radii: 18 px panels, 24 px dialogs, pill (half the height) for buttons and chips
 - No coloured text on translucent tints. Selected states use a solid fill or an outline.
 
 ## Enforcement
-- No colour, font or radius literal outside `src/styles/tokens.css`, except in document content (see What colour means): `src/lib/stamps.js` colours, user-picked colours, and the font previews in the font picker.
+- No colour, font or radius literal outside `src/styles/tokens.css`, except in document content (see What colour means): `src/lib/stamps.js` colours, user-picked colours, and the font previews in the font picker. The icon (`public/icon.svg`, see Icon) keeps its own fixed brand colours.
 - `npm run lint:styles`: stylelint with `declaration-strict-value` on `color`, `background`, `background-color`, `border` (and `border-top`/`-right`/`-bottom`/`-left`), `border-color`, `outline`, `box-shadow`, `fill`, `stroke`, `font`, `font-family` and `border-radius`, which must use `var(--…)`. `inherit`, `currentColor`, `transparent` and `0` are allowed.
 - `npm run check:literals` (a Node script, not grep): JSX/JS outside `src/lib/` and `src/styles/` contains no hex or `rgb(`/`hsl(` colours, no quoted font names in `fontFamily`/`font`, and no numeric `borderRadius`. Values must be `var(...)`.
 - Each check is proven both ways: silent on the real code, and catching one planted literal of each kind (colour, quoted font, px radius) in each file type it covers.
 - `color-scheme` and the mode toggle switch the token set on `:root[data-theme]`. No component reads the mode directly.
 
 ## Icon
-Not picked: Nick skipped the icon round on 20 Oct. The existing icon stays.
+**"Fanned, signed."** Two sheets fanned on a green tile, the front one signed.
+
+- **Grid:** 32 × 32 units.
+- **Tile:** the full 32 × 32, corner radius 8, `#1D6B57`.
+- **Back sheet:** 12 × 16 at (6.5, 8), radius 1.5, turned −12° about (12.5, 16), `#A9CFC2`.
+- **Front sheet:** 12 × 17 at (13, 7), radius 1.5, `#FFFFFF`.
+- **Signature:** a looped stroke from (15, 17.5), 1.7 wide, round caps and joins, `#1D6B57`. In the 16 px render only it is 2.4 wide; at 1.7 it faded to a pale smudge at that size.
+- **Signing line:** (15, 21) to (23, 21), 1.1 wide, round caps, `#1D6B57`.
+
+The colours are fixed brand values, not theme tokens: the icon looks the same in light and dark browsers.
+
+**Source:** `public/icon.svg`, the single source for every icon. `npm run icons` (`scripts/icons.mjs`, using sharp) regenerates `favicon.ico` (16, 32, 48 px), `apple-touch-icon.png` (180) and `icon-192.png` / `icon-512.png` in `public/`. `index.html` links the SVG as the icon, the .ico as the fallback, and the apple-touch-icon.
 
 ## Not settled here
 This file does not settle the palette. Rendering and judging on the laptop and the A32 does.
