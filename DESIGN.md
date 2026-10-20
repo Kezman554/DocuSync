@@ -58,7 +58,7 @@ These stay the same in both modes. They are content, or chrome that sits on the 
 | on-paper-muted ("Sign here" prompt) | `#4D5E57` | `#4D5E57` |
 | paper-mark (signing line, unchosen page-number spots) | `#C3CEC8` | `#C3CEC8` |
 | selection-ring | 1 px `page` halo, then 3 px `selection-on-page` | same |
-| marker-fill / marker-edge | `rgba(255,213,0,0.28)` / `rgba(230,170,0,0.9)` | same |
+| marker-fill / marker-edge (the highlight, multiplied; export uses the same) | `rgba(255,213,0,0.45)` / `rgba(230,170,0,0.9)` | same |
 | redaction-edge | `#C01C28` | `#C01C28` |
 | redaction-hatch | `rgba(17,17,17,0.6)` / `rgba(17,17,17,0.15)` stripes | same |
 | checker (behind a cut-out signature) | `#E3E5E8` squares on `page` | same |

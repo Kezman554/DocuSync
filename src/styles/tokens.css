@@ -26,7 +26,7 @@
   --on-paper: #13201b;
   --on-paper-muted: #4d5e57;
   --paper-mark: #c3cec8; /* unchosen spots, signing line */
-  --marker-fill: rgba(255, 213, 0, 0.28);
+  --marker-fill: rgba(255, 213, 0, 0.45);
   --marker-edge: rgba(230, 170, 0, 0.9);
   --redaction-edge: #c01c28;
   --redaction-hatch: repeating-linear-gradient(

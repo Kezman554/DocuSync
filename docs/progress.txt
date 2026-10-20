@@ -1060,3 +1060,7 @@ DocuSync — Progress Log
   still yellow; colour matches the token. +1 inspector section/Delete.)
   Mutation check: skipping highlights in export fails the three export
   tests. UI tests renamed (Highlight, Highlight 1, Delete highlight 1).
+- Opacity raised from 0.28 to 0.45 (--marker-fill and HIGHLIGHT, DESIGN.md
+  table): 0.28 read too pale once multiplied. White paper under a highlight
+  now renders about rgb(255, 236, 140); the render tests expect that colour
+  (±6 per channel), computed from HIGHLIGHT, and glyphs under it stay dark.

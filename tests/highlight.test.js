@@ -109,6 +109,19 @@ async function darkestGlyphPoint(bytes) {
 
 const sum = ([r, g, b]) => r + g + b;
 
+/**
+ * White paper under the highlight: Multiply at HIGHLIGHT.opacity mixes
+ * white with white × yellow, so each channel is 255 × (1 − a + a × c).
+ * At 0.45 that's about rgb(255, 236, 140).
+ */
+const PAPER_UNDER_HIGHLIGHT = [255, 213, 0].map((c) =>
+  Math.round(255 * (1 - HIGHLIGHT.opacity + HIGHLIGHT.opacity * (c / 255)))
+);
+const expectPaperYellow = (pixel) => {
+  expect(PAPER_UNDER_HIGHLIGHT).toEqual([255, 236, 140]);
+  pixel.forEach((channel, i) => expect(Math.abs(channel - PAPER_UNDER_HIGHLIGHT[i])).toBeLessThanOrEqual(6));
+};
+
 describe('highlight export', () => {
   it('bakes a rectangle over the content with opacity under 1 and the Multiply blend', async () => {
     const { out } = await exportWithHighlight();
@@ -158,10 +171,7 @@ describe('highlight export', () => {
     // On the glyph inside the highlight: still dark (Multiply keeps black black).
     expect(sum(at(glyph.x, glyph.y))).toBeLessThan(120);
     // Blank paper inside the highlight, right of the words: yellow.
-    const [r, g, b] = at(TEXT_AT.x + textWidth + 20, BOX.y + BOX.height / 2);
-    expect(r).toBeGreaterThan(240);
-    expect(g).toBeGreaterThan(220);
-    expect(b).toBeLessThan(r - 40);
+    expectPaperYellow(at(TEXT_AT.x + textWidth + 20, BOX.y + BOX.height / 2));
     // Paper outside it: still white.
     expect(at(300, 700)).toEqual([255, 255, 255]);
   });
@@ -172,9 +182,7 @@ describe('highlight export', () => {
     expect(ops).not.toContain(`1 0 0 1 ${BOX.x} ${BOX.y} cm`);
     expect(ops).toMatch(/Do/); // the page is now just its image
     const { at } = await renderPage1(out);
-    const [r, g, b] = at(TEXT_AT.x + textWidth + 20, BOX.y + BOX.height / 2);
-    expect(r).toBeGreaterThan(240);
-    expect(b).toBeLessThan(r - 40);
+    expectPaperYellow(at(TEXT_AT.x + textWidth + 20, BOX.y + BOX.height / 2));
   });
 });
 

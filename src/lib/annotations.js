@@ -32,7 +32,7 @@ export const DEFAULT_MARKER_SIZE = { width: 120, height: 48 };
  * Document content, not chrome: the same as --marker-fill in
  * src/styles/tokens.css, which the screen uses (a test keeps them equal).
  */
-export const HIGHLIGHT = { color: '#ffd500', opacity: 0.28 };
+export const HIGHLIGHT = { color: '#ffd500', opacity: 0.45 };
 
 let counter = 0;
 /** Unique-enough id for a new annotation within this session. */
