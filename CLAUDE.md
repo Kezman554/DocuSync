@@ -38,6 +38,8 @@ Non-destructive edits held in memory; baked into the PDF on export
 Page operations copy page objects, never rasterise (preserve selectable text)
 Deliberate exception, do not "fix": a page with a redaction box is flattened on export (src/lib/flatten.js). pdf-lib can't remove content from a content stream, so the page is rendered with pdf.js, boxes painted black, and rebuilt from the image alone; its original objects must never be copied into the output. Applies only to pages with redaction boxes.
 Pure logic (coordinate mapping, image pipeline) lives in src/lib/ with unit tests
+jsdom can't judge pixels, alpha or orientation: verify those in a real browser engine, never a jsdom test [4-dev-hub/lessons-learned, 13 Oct]
+Anything that persists gets a test that constructs a second reader over the same store, and any sort key it uses must be unable to tie [lessons-learned, DocuSync N–Q]
 Read DESIGN.md before any UI work
 No colour, font or radius literal outside src/styles/tokens.css, except the document content DESIGN.md lists (src/lib/stamps.js colours, user-picked colours, the font picker's previews); npm run lint:styles, check:literals and check:contrast enforce it
 
